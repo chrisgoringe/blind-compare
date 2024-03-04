@@ -1,0 +1,12 @@
+# directory in which the images are stored:
+--directory=
+
+# images need to be in pairs such that replacing a string in the filename with another string finds the other image
+# for instance if there are pairs of files like `model_a_1.jpg` and `model_qs_1.jpg`, then
+# --match=a
+# --sub=qs
+--match=
+--sub=
+
+# height of the window
+--height=768
