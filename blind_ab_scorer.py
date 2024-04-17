@@ -72,7 +72,7 @@ class TheApp:
         if keypad_layout:
             if (perrow>3 or ic.number//perrow>3):
                 raise Exception(f"--keypad incompatible with {ic.number} sets displayed {perrow} per row")
-            self.keymap = [" 2  1  0  ", " 45 23 01 ", "678345012 "][perrow-1]
+            self.keymap = [" 2  1  0  ", " 45 23 01 ", " 678345012"][perrow-1]
         else:
             self.keymap = " 0123456789"
 
@@ -98,6 +98,8 @@ class TheApp:
                 self.ic.score(choice)
                 self.pick_images()
                 self.app.title(f"{sum(self.ic.scores)}")
+        except IndexError:
+            self.app.quit()
         except:
             print(f"keypress {k.char} ignored")
 
