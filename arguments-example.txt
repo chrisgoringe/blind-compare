@@ -1,12 +1,38 @@
-# directory in which the images are stored:
+# directory in which the images are stored [required]
 --directory=
 
-# images need to be in pairs such that replacing a string in the filename with another string finds the other image
-# for instance if there are pairs of files like `model_a_1.jpg` and `model_qs_1.jpg`, then
-# --match=a
-# --sub=qs
+# string that will match images in the first set [required]
 --match=
+
+# comma separated list of string(s) that replace the 'match' term to generate second and subsequent sets  [required]
 --sub=
 
-# height of the window
---height=768
+# height at which the images should be displayed [optional, default=768]
+--height=
+
+# number of images to display per row [optional, default is to show all images on the same row]
+--perrow=
+
+# use keypad layout to choose images
+# --keypad
+
+# print additional information to console during run
+# --verbose
+
+####
+#
+# Example - images stored as follows:
+# images/made_with_model1_1.png
+# images/made_with_model2_1.png
+# images/made_with_model3_1.png
+# images/made_with_model1_1.png
+# images/made_with_model2_1.png
+# images/made_with_model3_1.png
+# ...
+# 
+# use:
+# --directoy=images
+# --match=model1
+# --sub=model2,model3
+#
+####

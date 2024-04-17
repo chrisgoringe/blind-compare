@@ -12,76 +12,94 @@ def parse_arguments():
     parser = CommentArgumentParser("Blind compare image pairs. Normal usage python blind_ab_score.py @arguments.txt", fromfile_prefix_chars='@')
     parser.add_argument('--directory', help="Directory images are in", required=True)
     parser.add_argument('--match', help="String to match to identify first image set", required=True)
-    parser.add_argument('--sub', help="Replacement string to go from first image to second", required=True)
-    parser.add_argument('--height', type=int, default=768, help="Window height")
+    parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown", required=True)
+    parser.add_argument('--height', type=int, default=768, help="Height to display each image")
+    parser.add_argument('--perrow', type=int, default=-1, help="Number of images per row")
+    parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
+    parser.add_argument('--verbose', action="store_true", help="Print selections to the console")
 
     return parser.parse_args()
 
 def main():
     args = parse_arguments()
-    ic = ImageChooser(args.directory, args.match, args.sub)
-    app = TheApp(ic, args.height)
+    ic = ImageChooser(args.directory, args.match, args.sub, args.verbose)
+    app = TheApp(ic, args.height, args.perrow, args.keypad)
     app.app.mainloop()
-    print(f"{args.match} chosen {ic.score_a} times, {args.sub} chosen {ic.score_b} times")
+    for i, label in enumerate(ic.sub):
+        print("{:>10} chosen {:>4} times".format(label, ic.scores[i]))
 
 class ImageChooser:
-    def __init__(self, directory, match, sub):
+    def __init__(self, directory:str, match:str, sub:str, verbose:bool):
         self.directory = directory
-        self.match = match
-        self.sub = sub
-        self.image_as = [file for file in os.listdir(self.directory) if match in file]
-        random.shuffle(self.image_as)
-        self.score_a, self.score_b = (0,0)
+        self.verbose = verbose
+
+        self.base_imagepaths = [os.path.join(self.directory, file) for file in os.listdir(self.directory) if match in file]
+        random.shuffle(self.base_imagepaths)
+
+        self.sub = [match,] + sub.split(",")
+        self.number = len(self.sub)
+        self.scores = list(0 for _ in range(len(self.sub)+1))
+        self.order = list(range(self.number))
+
         self.pointer = -1
 
-    def next_image_pair(self):
+    def next_image_set(self):
         self.pointer += 1
-        image_a = self.image_as[self.pointer]
-        ia = Image.open(os.path.join(self.directory, image_a))
-        ib = Image.open(os.path.join(self.directory, image_a.replace(self.match, self.sub)))
-        self.left_is_a = random.random()<0.5
-        return (ia,ib) if self.left_is_a else (ib,ia)
+        self.base_imagepath = self.base_imagepaths[self.pointer]
+        images = list( Image.open(self.base_imagepath.replace(self.sub[0], sub)) for sub in self.sub )
+        random.shuffle(self.order)
+        return tuple( images[self.order[i]] for i in range(self.number) )
 
-    def score(self, left_picked):
-        if left_picked:
-            self.score_a += self.left_is_a
-            self.score_b += not self.left_is_a
-        else:
-            self.score_a += not self.left_is_a
-            self.score_b += self.left_is_a          
-
+    def score(self, picked):
+        set_number = self.order[picked]
+        self.scores[set_number] += 1      
+        if self.verbose: 
+            picked_filename = os.path.split(self.base_imagepath)[1].replace(self.sub[0], self.sub[set_number])
+            print(f"You chose image #{picked+1} which was {picked_filename}")
+       
+    @property
     def aspect_ratio(self):
-        i = Image.open(os.path.join(self.directory, self.image_as[0]))
+        i = Image.open(os.path.join(self.directory, self.base_imagepaths[0]))
         return i.width / i.height 
 
 class TheApp:
-    def __init__(self, ic:ImageChooser, height:int):
+    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad_layout:bool):
         self.app = customtkinter.CTk()
         self.app.title("")
         self.ic = ic
         self.height=height
+        perrow = perrow if perrow>=1 else ic.number
+        if keypad_layout:
+            if (perrow>3 or ic.number//perrow>3):
+                raise Exception(f"--keypad incompatible with {ic.number} sets displayed {perrow} per row")
+            self.keymap = [" 2  1  0  ", " 45 23 01 ", "678345012 "][perrow-1]
+        else:
+            self.keymap = " 0123456789"
 
-        maw = ic.aspect_ratio()
-        self.app.geometry(f"{height*maw*2}x{height}")
-        self.image_labels = [customtkinter.CTkLabel(self.app, text="") for _ in (0,1)]
-        self.image_labels[0].grid(row=0, column=0)
-        self.image_labels[1].grid(row=0, column=1)
+        self.app.geometry(f"{height*ic.aspect_ratio*ic.number}x{height}")
+        self.image_labels = [customtkinter.CTkLabel(self.app, text="") for _ in range(ic.number)]
+        
+        for i, label in enumerate(self.image_labels): label.grid(row=(i//perrow), column=(i % perrow))
+
         self.app.bind("<KeyRelease>", self.keyup)
         self.pick_images()
         
     def pick_images(self):
-        image_pair = self.ic.next_image_pair()
-        for i in (0,1):
-            im = image_pair[i]
+        image_set = self.ic.next_image_set()
+        for i, im in enumerate(image_set):
             self.image_labels[i].configure(image = customtkinter.CTkImage(light_image=im, size=(int(self.height*im.width/im.height),self.height)))
 
     def keyup(self,k):
+        if k.char=='q': self.app.quit()
         try:
-            if k.char in "12": 
-                self.ic.score(k.char=='1')
+            digit = int(k.char)
+            choice = int(self.keymap[digit])
+            if choice<self.ic.number:
+                self.ic.score(choice)
                 self.pick_images()
-        except IndexError:
-            self.app.quit()
+                self.app.title(f"{sum(self.ic.scores)}")
+        except:
+            print(f"keypress {k.char} ignored")
 
 if __name__=="__main__":
     main()
