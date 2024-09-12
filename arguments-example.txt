@@ -5,6 +5,7 @@
 --match=
 
 # comma separated list of string(s) that replace the 'match' term to generate second and subsequent sets  [required]
+# whitespace is trimmed from each entry in the list
 --sub=
 
 # height at which the images should be displayed [optional, default=768]
@@ -31,8 +32,8 @@
 # ...
 # 
 # use:
-# --directoy=images
+# --directory=images
 # --match=model1
-# --sub=model2,model3
+# --sub=model2, model3
 #
 ####

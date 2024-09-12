@@ -34,7 +34,7 @@ In general you want the corresponding images (so all three _00002 images, for in
 
 Rename `arguments-example.txt` as `arguments.txt`, and edit it appropriately. You need to specify the directory, match, and substitutions, the rest is optional. The run with
 
-`python blind_ab_scorer @arguments.txt`
+`python blind_ab_scorer.py @arguments.txt`
 
 A random image from the original set will be chosen, and the corresponding images from all other sets. They will be displayed in random order. You pick your favourite, and a new set is displayed, until all images in the original set have been used (or you quit by pressing `q`). Then the stats will be displayed in the console:
 
