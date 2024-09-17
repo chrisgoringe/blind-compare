@@ -2,13 +2,6 @@
 
 Compare two or more sets of images, normally generated with most things the same. For instance... same seed and prompt, different model.
 
-## Shameless plug for my ComfyUI custom nodes
-
-- [Use Everywhere](https://github.com/chrisgoringe/cg-use-everywhere) - eliminate spaghetti by invisible broadcasting. 
-- [Image picker](https://github.com/chrisgoringe/cg-image-picker) - pause the execution and let you choose an image or images to continue with.
-
-Love my work? [Buy me a coffee!](https://www.buymeacoffee.com/chrisgoringe)
-
 ## Organising your images
 
 The images need to be named in such a way that a simple string match will find all images in the first set, and a substitution of that string with another will give the filename of the corresponding image in another set. 
@@ -26,9 +19,20 @@ made_with_model_two_00080.png
 made_with_model_three_00080.png
 ```
 
-works with `--match=one` and `--sub=two,three`.
+works with `--match=one` and `--sub=two,three`. You can include the match at the start of the sub list if you feel that is clearer (`--sub=one,two,three`)
 
 In general you want the corresponding images (so all three _00002 images, for instance) to have been generated with the same parameters except for the difference you are testing (in this example, the model used).
+
+### --rmatch
+
+You can use `--rmatch=REGEX` to do regex matching; `--match` is still used for the substitutions. For instance, if you images to compare start with a digit, 
+you can avoid matching 0s found later in the name:
+
+```
+--regex = ^0
+--match = 0
+--sub   = 1,2
+``` 
 
 ## Running a comparison
 
@@ -69,4 +73,4 @@ If you specify `--keypad` then you pick images using the keypad layout by pressi
 
 ### `--verbose`
 
-`--verbose` can be used to print your choices to the console (perhaps to check you understand what number to press!). I would *strongly* discourage you from using this during a run, since the whole point of a blind test is that you don't know which set you are choosing from!
+`--verbose=2` can be used to print your choices to the console (perhaps to check you understand what number to press!). I would *strongly* discourage you from using this during a run, since the whole point of a blind test is that you don't know which set you are choosing from!

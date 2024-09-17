@@ -4,6 +4,9 @@
 # string that will match images in the first set [required]
 --match=
 
+# optionally, require that the first set images match a regex
+#--rmatch=
+
 # comma separated list of string(s) that replace the 'match' term to generate second and subsequent sets  [required]
 # whitespace is trimmed from each entry in the list
 --sub=
@@ -11,14 +14,14 @@
 # height at which the images should be displayed [optional, default=768]
 --height=
 
-# number of images to display per row [optional, default is to show all images on the same row]
+# number of images to display per row [optional, default is 3]
 --perrow=
 
 # use keypad layout to choose images
 # --keypad
 
-# print additional information to console during run
-# --verbose
+# print additional information to console during run (1 is default, 0 is quieter, 2 is noisy)
+# --verbose=2
 
 ####
 #
