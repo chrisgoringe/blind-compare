@@ -74,3 +74,7 @@ If you specify `--keypad` then you pick images using the keypad layout by pressi
 ### `--verbose`
 
 `--verbose=2` can be used to print your choices to the console (perhaps to check you understand what number to press!). I would *strongly* discourage you from using this during a run, since the whole point of a blind test is that you don't know which set you are choosing from!
+
+### `--scorelist`
+
+If you have more than two images, `--scorelist` means you can pick the top few images in order. Use the spacebar (or select all images) to finish.

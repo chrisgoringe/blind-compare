@@ -14,14 +14,18 @@ class ImageChooser:
         matches = (lambda a : re.match(rmatch, a)) if rmatch else (lambda a: match in a)
         self.base_imagepaths = [os.path.join(self.directory, file) for file in os.listdir(self.directory) if matches(file)]
         random.shuffle(self.base_imagepaths)
+        self.sub = [match,] + list(x.strip() for x in sub.split(","))
+        if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
+
+        if verbose>0: print(f"{len(self.base_imagepaths)} base images found")
+        self.base_imagepaths = [ bip for bip in self.base_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
 
         self.batches = len(self.base_imagepaths)
         if verbose>0: 
-            print(f"{self.batches} base images found")
+            print(f"{self.batches} image sets")
             if verbose>1: print("\n".join(self.base_imagepaths))
 
-        self.sub = [match,] + list(x.strip() for x in sub.split(","))
-        if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
+
         self.batch_size = len(self.sub)
         self.scores = None
         self.order = list(range(self.batch_size))
@@ -101,18 +105,20 @@ class TheApp:
     def keyup(self,k):
         if k.char=='q': self.app.quit()
         try:
-            digit = int(k.char)
-            choice = int(self.keymap[digit])
-            if choice<self.ic.batch_size:
-                if (self.scorelist):
-                    self.scores.append(choice)
-                    if self.verbose: print(f"{self.scores}")
-                    if (len(self.scores)) == self.ic.batch_size:
+            if k.char==' ' and self.scorelist:
+                self.ic.scorelist(self.scores)
+            else:              
+                choice = int(self.keymap[int(k.char)])
+                if choice<self.ic.batch_size:
+                    if (self.scorelist):
+                        self.scores.append(choice)
+                        if self.verbose: print(f"{self.scores}")
+                        if (len(self.scores)) != self.ic.batch_size: return
                         self.ic.scorelist(self.scores)
-                        self.pick_images()
-                else:
-                    self.ic.score(choice)
-                    self.pick_images()
+                    else:
+                        self.ic.score(choice)
+                else: return
+            self.pick_images()
             self.app.title(f"{self.done}/{self.ic.batches}")
         except AllDone:
             self.app.quit()
