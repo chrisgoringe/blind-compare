@@ -1,4 +1,4 @@
-import random, argparse, os, re
+import random, argparse, os, re, shutil
 import customtkinter
 from PIL import Image
 from typing import Optional
@@ -7,24 +7,28 @@ class MissingImageException(Exception): pass
 class AllDone(Exception): pass
 
 class ImageChooser:
-    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, **kwargs):
+    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, delete_on_x:bool, **kwargs):
         self.directory = directory
         self.verbose = verbose
 
         matches = (lambda a : re.match(rmatch, a)) if rmatch else (lambda a: match in a)
         self.base_imagepaths = [os.path.join(self.directory, file) for file in os.listdir(self.directory) if matches(file)]
         random.shuffle(self.base_imagepaths)
-        self.sub = [match,] + list(x.strip() for x in sub.split(","))
-        if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
-
         if verbose>0: print(f"{len(self.base_imagepaths)} base images found")
-        self.base_imagepaths = [ bip for bip in self.base_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
 
+        if delete_on_x:
+            self.sub = [match,]
+            print("\n\n*** Running in delete_on_x mode ***\n\n")
+            if sub: print("--sub ignored when doing --delete_on_x")
+        else:    
+            self.sub = [match,] + list(x.strip() for x in sub.split(","))
+            if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
+            self.base_imagepaths = [ bip for bip in self.base_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
+        
         self.batches = len(self.base_imagepaths)
         if verbose>0: 
             print(f"{self.batches} image sets")
             if verbose>1: print("\n".join(self.base_imagepaths))
-
 
         self.batch_size = len(self.sub)
         self.scores = None
@@ -64,9 +68,13 @@ class ImageChooser:
         return i.width / i.height 
 
 class TheApp:
-    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, **kwargs):
+    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, delete_on_x:bool, preserve:str, **kwargs):
         self.app = customtkinter.CTk()
-        self.app.title("")
+        self.header = 'DELECT ON X' if delete_on_x else 'AB Compare'
+        self.delete_on_x = delete_on_x
+        if self.delete_on_x:
+            self.preserve = preserve
+            if not os.path.exists(self.preserve): os.makedirs(self.preserve, exist_ok=True)     
         self.ic = ic
         self.height=height
         self.scorelist = scorelist
@@ -90,6 +98,8 @@ class TheApp:
 
         self.app.bind("<KeyRelease>", self.keyup)
         self.pick_images()
+
+    def set_title(self): self.app.title(f"{self.header} {self.done}/{self.ic.batches}")  
         
     def pick_images(self):
         try:
@@ -101,25 +111,33 @@ class TheApp:
         except MissingImageException as e:
             if self.verbose: print(f"Missing image: {e.args[0]}")
             self.pick_images()
+        self.set_title()
 
     def keyup(self,k):
         if k.char=='q': self.app.quit()
         try:
-            if k.char==' ' and self.scorelist:
-                self.ic.scorelist(self.scores)
-            else:              
-                choice = int(self.keymap[int(k.char)])
-                if choice<self.ic.batch_size:
-                    if (self.scorelist):
-                        self.scores.append(choice)
-                        if self.verbose: print(f"{self.scores}")
-                        if (len(self.scores)) != self.ic.batch_size: return
-                        self.ic.scorelist(self.scores)
-                    else:
-                        self.ic.score(choice)
-                else: return
+            if self.delete_on_x:
+                if k.char=='x':
+                    os.remove(self.ic.base_imagepath)
+                    print(f"Deleted {self.ic.base_imagepath}")
+                else:
+                    newpath = os.path.join(self.preserve, os.path.basename(self.ic.base_imagepath))
+                    shutil.move(self.ic.base_imagepath, newpath)
+            else:
+                if k.char==' ' and self.scorelist:
+                    self.ic.scorelist(self.scores)
+                else:              
+                    choice = int(self.keymap[int(k.char)])
+                    if choice<self.ic.batch_size:
+                        if (self.scorelist):
+                            self.scores.append(choice)
+                            if self.verbose: print(f"{self.scores}")
+                            if (len(self.scores)) != self.ic.batch_size: return
+                            self.ic.scorelist(self.scores)
+                        else:
+                            self.ic.score(choice)
+                    else: return
             self.pick_images()
-            self.app.title(f"{self.done}/{self.ic.batches}")
         except AllDone:
             self.app.quit()
 
@@ -140,11 +158,14 @@ def parse_arguments():
     parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
     parser.add_argument('--scorelist', action="store_true", help="Enter sequence of preferences ")
     parser.add_argument('--verbose', type=int, default=1, help="Verbosity 2 gives spoilers")
+    parser.add_argument('--delete_on_x', action="store_true", help="Ignore subs, show one image at a time, delete if press 'x'")
+    parser.add_argument('--preserve', default="keep", help="When using --delete_on_x, move undeleted images to this directory (relative to --directory)")
 
     return parser.parse_args()
 
 def main():
     args = vars(parse_arguments())
+    args['preserve'] = os.path.join(args['directory'], args['preserve'])
     ic = ImageChooser(**args)
     app = TheApp(ic, **args)
     app.app.mainloop()
