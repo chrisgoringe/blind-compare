@@ -78,3 +78,7 @@ If you specify `--keypad` then you pick images using the keypad layout by pressi
 ### `--scorelist`
 
 If you have more than two images, `--scorelist` means you can pick the top few images in order. Use the spacebar (or select all images) to finish.
+
+## Keep or kill
+
+Use `--delete_on_x` to view images one at a time. Press `x` to delete, any other key to move to the directory defined in `--preserve` (default is `keep`)
