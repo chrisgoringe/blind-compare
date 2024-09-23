@@ -7,7 +7,7 @@ class MissingImageException(Exception): pass
 class AllDone(Exception): pass
 
 class ImageChooser:
-    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, delete_on_x:bool, **kwargs):
+    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, sort_mode:bool, **kwargs):
         self.directory = directory
         self.verbose = verbose
 
@@ -16,10 +16,9 @@ class ImageChooser:
         random.shuffle(self.base_imagepaths)
         if verbose>0: print(f"{len(self.base_imagepaths)} base images found")
 
-        if delete_on_x:
+        if sort_mode:
             self.sub = [match,]
-            print("\n\n*** Running in delete_on_x mode ***\n\n")
-            if sub: print("--sub ignored when doing --delete_on_x")
+            if sub: print("--sub ignored when doing --sort_mode")
         else:    
             self.sub = [match,] + list(x.strip() for x in sub.split(","))
             if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
@@ -68,13 +67,15 @@ class ImageChooser:
         return i.width / i.height 
 
 class TheApp:
-    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, delete_on_x:bool, preserve:str, **kwargs):
+    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, **kwargs):
         self.app = customtkinter.CTk()
-        self.header = 'DELECT ON X' if delete_on_x else 'AB Compare'
-        self.delete_on_x = delete_on_x
-        if self.delete_on_x:
-            self.preserve = preserve
-            if not os.path.exists(self.preserve): os.makedirs(self.preserve, exist_ok=True)     
+        self.header = 'ZM sort' if sort_mode else 'AB Compare'
+        self.sort_mode = sort_mode
+        if self.sort_mode:
+            self.sort_z = kwargs['sort_z']
+            self.sort_m = kwargs['sort_m']
+            if not os.path.exists(self.sort_z): os.makedirs(self.sort_z, exist_ok=True)
+            if not os.path.exists(self.sort_m): os.makedirs(self.sort_m, exist_ok=True)
         self.ic = ic
         self.height=height
         self.scorelist = scorelist
@@ -116,13 +117,14 @@ class TheApp:
     def keyup(self,k):
         if k.char=='q': self.app.quit()
         try:
-            if self.delete_on_x:
-                if k.char=='x':
-                    os.remove(self.ic.base_imagepath)
-                    print(f"Deleted {self.ic.base_imagepath}")
-                else:
-                    newpath = os.path.join(self.preserve, os.path.basename(self.ic.base_imagepath))
+            if self.sort_mode:
+                if k.char=='z':
+                    newpath = os.path.join(self.sort_z, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
+                elif k.char=='m':
+                    newpath = os.path.join(self.sort_m, os.path.basename(self.ic.base_imagepath))
+                    shutil.move(self.ic.base_imagepath, newpath)
+                else: return
             else:
                 if k.char==' ' and self.scorelist:
                     self.ic.scorelist(self.scores)
@@ -153,25 +155,28 @@ def parse_arguments():
     parser.add_argument('--match', required=True, help="String to match to identify first image set")
     parser.add_argument('--rmatch', help="Optional regex to identify first image set. --match and --sub still used for replacements")
     parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown", required=True)
-    parser.add_argument('--height', type=int, default=768, help="Height to display each image")
+    parser.add_argument('--height', type=int, default=768, help="Height of app")
     parser.add_argument('--perrow', type=int, default=3, help="Number of images per row")
     parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
     parser.add_argument('--scorelist', action="store_true", help="Enter sequence of preferences ")
     parser.add_argument('--verbose', type=int, default=1, help="Verbosity 2 gives spoilers")
-    parser.add_argument('--delete_on_x', action="store_true", help="Ignore subs, show one image at a time, delete if press 'x'")
-    parser.add_argument('--preserve', default="keep", help="When using --delete_on_x, move undeleted images to this directory (relative to --directory)")
-
+    parser.add_argument('--sort_mode', action="store_true", help="Ignore subs, show one image at a time, sort with 'z' and m'")
+    parser.add_argument('--sort_z', default="z", help="When using --sort_mode, move 'z' images to this directory (relative to --directory)")
+    parser.add_argument('--sort_m', default="m", help="When using --sort_mode, move 'm' images to this directory (relative to --directory)")
     return parser.parse_args()
 
 def main():
     args = vars(parse_arguments())
     args['preserve'] = os.path.join(args['directory'], args['preserve'])
     ic = ImageChooser(**args)
+    args['height'] = args['height'] // (ic.batch_size // args['prerow'])
     app = TheApp(ic, **args)
     app.app.mainloop()
     if ic.scores is not None:
+        print(f"{len(ic.base_imagepaths)} sets total")
         for i, label in enumerate(ic.sub):
             print(f"{label} : {ic.scores[i]}")
+
 
 if __name__=="__main__":
     main()
