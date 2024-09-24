@@ -2,6 +2,8 @@
 
 Compare two or more sets of images, normally generated with most things the same. For instance... same seed and prompt, different model.
 
+Or, in sort mode, quickly sort images into two folders
+
 ## Organising your images
 
 The images need to be named in such a way that a simple string match will find all images in the first set, and a substitution of that string with another will give the filename of the corresponding image in another set. 
@@ -36,7 +38,7 @@ you can avoid matching 0s found later in the name:
 
 ## Running a comparison
 
-Rename `arguments-example.txt` as `arguments.txt`, and edit it appropriately. You need to specify the directory, match, and substitutions, the rest is optional. The run with
+Rename `arguments-example.txt` as `arguments.txt`, and edit it appropriately. Then run with
 
 `python blind_ab_scorer.py @arguments.txt`
 

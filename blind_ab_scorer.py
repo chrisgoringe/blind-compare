@@ -145,16 +145,19 @@ class TheApp:
 
 class CommentArgumentParser(argparse.ArgumentParser):
     def convert_arg_line_to_args(self, arg_line):
-        if arg_line.startswith('#'): return [] 
+        arg_line = arg_line.split('#')[0]
+        if not arg_line: return []
         line = "=".join(a.strip() for a in arg_line.split('='))
         return [line,] if len(line) else []
+
+class ArgumentException(Exception): pass
 
 def parse_arguments():
     parser = CommentArgumentParser("Blind compare image pairs. Normal usage python blind_ab_score.py @arguments.txt", fromfile_prefix_chars='@')
     parser.add_argument('--directory', help="Directory images are in", required=True)
-    parser.add_argument('--match', required=True, help="String to match to identify first image set")
+    parser.add_argument('--match', help="String to match to identify first image set")
     parser.add_argument('--rmatch', help="Optional regex to identify first image set. --match and --sub still used for replacements")
-    parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown", required=True)
+    parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown")
     parser.add_argument('--height', type=int, default=768, help="Height of app")
     parser.add_argument('--perrow', type=int, default=3, help="Number of images per row")
     parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
@@ -163,11 +166,18 @@ def parse_arguments():
     parser.add_argument('--sort_mode', action="store_true", help="Ignore subs, show one image at a time, sort with 'z' and m'")
     parser.add_argument('--sort_z', default="z", help="When using --sort_mode, move 'z' images to this directory (relative to --directory)")
     parser.add_argument('--sort_m', default="m", help="When using --sort_mode, move 'm' images to this directory (relative to --directory)")
-    return parser.parse_args()
+
+    args = parser.parse_args()
+    if not args.sort_mode and not (args.match and args.sub):
+        raise ArgumentException("Either --sort_mode (for sorting) or --match and --sub (for comparing) are required")
+    
+    args.sort_z = os.path.join(args.directory, args.sort_z)
+    args.sort_m = os.path.join(args.directory, args.sort_m)
+
+    return vars(args)
 
 def main():
-    args = vars(parse_arguments())
-    args['preserve'] = os.path.join(args['directory'], args['preserve'])
+    args = parse_arguments()
     ic = ImageChooser(**args)
     args['height'] = args['height'] // (ic.batch_size // args['prerow'])
     app = TheApp(ic, **args)
@@ -177,7 +187,8 @@ def main():
         for i, label in enumerate(ic.sub):
             print(f"{label} : {ic.scores[i]}")
 
-
 if __name__=="__main__":
-    main()
+    try: main()
+    except ArgumentException as e:
+        print(e.args[0])
     

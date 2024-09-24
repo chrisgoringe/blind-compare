@@ -1,42 +1,32 @@
-# directory in which the images are stored [required]
---directory=
-
-# string that will match images in the first set [required]
---match=
-
-# optionally, require that the first set images match a regex
-#--rmatch=
-
-# comma separated list of string(s) that replace the 'match' term to generate second and subsequent sets  [required]
-# whitespace is trimmed from each entry in the list
---sub=
-
-# height at which the images should be displayed [optional, default=768]
---height=
-
-# number of images to display per row [optional, default is 3]
---perrow=
-
-# use keypad layout to choose images
-# --keypad
-
-# print additional information to console during run (1 is default, 0 is quieter, 2 is noisy)
-# --verbose=2
-
-####
-#
-# Example - images stored as follows:
-# images/made_with_model1_1.png
-# images/made_with_model2_1.png
-# images/made_with_model3_1.png
-# images/made_with_model1_1.png
-# images/made_with_model2_1.png
-# images/made_with_model3_1.png
-# ...
+###
 # 
-# use:
-# --directory=images
-# --match=model1
-# --sub=model2, model3
+# Copy this file as arguments.txt, edit it, and then run with
 #
-####
+# python blind_ab_scorer.py @arguments.txt
+#
+# Required for all runs:
+  
+--directory = /path/to/folder/with/images
+
+# Optional for all runs:
+
+# --height = 800   # Height of app in pixel
+
+# Required for AB comparison:
+
+--match = xxx    # The pattern found in the filename of the base image in each set
+--sub = yyy,zzz  # One or more patterns that replace xxx in other images of the same set
+                        
+# Optional for AB comparison:
+
+# --rmatch = regex # A regex that is used instead of match to identify base image (match still used for replacements) eg ^0 to only match at start
+# --perrow = n     # Number of images to show per row (default 3)
+# --keypad         # Use the keypad layout to select images
+# --scorelist      # Default is just to choose one image. With scorelist, enter a sequence, ending with space (or when all have been chosen)
+# --verbose n      # setting to 2 will give spoilers
+
+# Required for sort model
+
+# --sort_mode        # Show one image at a time, and sort into folder using 'Z' and 'M' (any other key leaves image unmoved)
+# --sort_z z_dir     # Directory (relative to --directory) to move 'z' images to
+# --sort_m m_dir     # Directory (relative to --directory) to move 'm' images to
