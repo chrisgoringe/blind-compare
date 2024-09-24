@@ -179,7 +179,7 @@ def parse_arguments():
 def main():
     args = parse_arguments()
     ic = ImageChooser(**args)
-    args['height'] = args['height'] // (ic.batch_size // args['prerow'])
+    args['height'] = args['height'] // (ic.batch_size // args['perrow'])
     app = TheApp(ic, **args)
     app.app.mainloop()
     if ic.scores is not None:
