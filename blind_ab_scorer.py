@@ -6,28 +6,49 @@ from typing import Optional
 class MissingImageException(Exception): pass
 class AllDone(Exception): pass
 
+IMAGE_EXT = [".jpg", ".jpeg", ".png"]
+
+def is_image(filepath):
+    return(os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() in IMAGE_EXT)
+
 class ImageChooser:
-    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, sort_mode:bool, **kwargs):
+    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, sort_mode:bool, recurse:bool, **kwargs):
         self.directory = directory
         self.verbose = verbose
 
-        matches = (lambda a : re.match(rmatch, a)) if rmatch else (lambda a: match in a)
-        self.base_imagepaths = [os.path.join(self.directory, file) for file in os.listdir(self.directory) if matches(file)]
-        random.shuffle(self.base_imagepaths)
-        if verbose>0: print(f"{len(self.base_imagepaths)} base images found")
+        if sort_mode: matches = lambda a : True
+        elif rmatch:  matches = lambda a : re.match(rmatch, a)
+        else:         matches = lambda a : match in a
 
-        if sort_mode:
-            self.sub = [match,]
-            if sub: print("--sub ignored when doing --sort_mode")
-        else:    
+        candidate_imagepaths = []
+        def scan_directory(d):
+            for f in os.listdir(d):
+                if matches(f) and is_image(os.path.join(d,f)):      candidate_imagepaths.append( os.path.join(d,f) )
+                if recurse    and os.path.isdir(os.path.join(d,f)): scan_directory(os.path.join(d,f))
+        scan_directory(self.directory)
+
+        if not candidate_imagepaths:
+            raise MissingImageException("No matching images found")
+        
+        random.shuffle(candidate_imagepaths)
+        if verbose>0: print(f"{len(candidate_imagepaths)} base images found")
+
+        if sort_mode: 
+            self.sub = [".",]
+            self.base_imagepaths = candidate_imagepaths
+        else:
             self.sub = [match,] + list(x.strip() for x in sub.split(","))
             if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
-            self.base_imagepaths = [ bip for bip in self.base_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
-        
+            self.base_imagepaths = [ bip for bip in candidate_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
+            
         self.batches = len(self.base_imagepaths)
         if verbose>0: 
             print(f"{self.batches} image sets")
             if verbose>1: print("\n".join(self.base_imagepaths))
+
+        if not self.batches:
+            def any_matches(the_sub): any(os.path.exists(the_base.replace(self.sub[0], the_sub)) for the_base in candidate_imagepaths)
+            raise MissingImageException("No image sets - no matches for: "+",".join( sub for sub in self.sub if not any_matches(sub)))
 
         self.batch_size = len(self.sub)
         self.scores = None
@@ -79,9 +100,6 @@ class TheApp:
         self.ic = ic
         self.height=height
         self.scorelist = scorelist
-        if scorelist and not ic.batch_size>2:
-            print(f"--scorelist ignored when only comparing between two images")
-            self.scorelist = False
         self.done = 0
         self.verbose = verbose
         perrow = perrow if perrow>=1 else ic.batch_size
@@ -124,7 +142,6 @@ class TheApp:
                 elif k.char=='m':
                     newpath = os.path.join(self.sort_m, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
-                else: return
             else:
                 if k.char==' ' and self.scorelist:
                     self.ic.scorelist(self.scores)
@@ -155,17 +172,19 @@ class ArgumentException(Exception): pass
 def parse_arguments():
     parser = CommentArgumentParser("Blind compare image pairs. Normal usage python blind_ab_score.py @arguments.txt", fromfile_prefix_chars='@')
     parser.add_argument('--directory', help="Directory images are in", required=True)
-    parser.add_argument('--match', help="String to match to identify first image set")
+    parser.add_argument('--recurse', action="store_true", help="include subdirectories")
     parser.add_argument('--rmatch', help="Optional regex to identify first image set. --match and --sub still used for replacements")
+    parser.add_argument('--match', help="String to match to identify first image set")
     parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown")
     parser.add_argument('--height', type=int, default=768, help="Height of app")
     parser.add_argument('--perrow', type=int, default=3, help="Number of images per row")
     parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
     parser.add_argument('--scorelist', action="store_true", help="Enter sequence of preferences ")
     parser.add_argument('--verbose', type=int, default=1, help="Verbosity 2 gives spoilers")
-    parser.add_argument('--sort_mode', action="store_true", help="Ignore subs, show one image at a time, sort with 'z' and m'")
+    parser.add_argument('--sort_mode', action="store_true", help="Ignore match and subs, show one image at a time, sort with 'z' and m'")
     parser.add_argument('--sort_z', default="z", help="When using --sort_mode, move 'z' images to this directory (relative to --directory)")
     parser.add_argument('--sort_m', default="m", help="When using --sort_mode, move 'm' images to this directory (relative to --directory)")
+    parser.add_argument('--extensions', default=[], action="append", help="Extra extensions to count as images (.jpg, .jpeg and .png default)")
 
     args = parser.parse_args()
     if not args.sort_mode and not (args.match and args.sub):
@@ -174,19 +193,26 @@ def parse_arguments():
     args.sort_z = os.path.join(args.directory, args.sort_z)
     args.sort_m = os.path.join(args.directory, args.sort_m)
 
+    for e in args.extensions:
+        global IMAGE_EXT
+        IMAGE_EXT += e.lower() if e[0]=='.' else f".{e}".lower()
+
     return vars(args)
 
 def main():
-    args = parse_arguments()
-    ic = ImageChooser(**args)
-    rows = ((ic.batch_size-1) // args['perrow']) + 1
-    args['height'] = args['height'] // rows
-    app = TheApp(ic, **args)
-    app.app.mainloop()
-    if ic.scores is not None:
-        print(f"{len(ic.base_imagepaths)} sets total")
-        for i, label in enumerate(ic.sub):
-            print(f"{label} : {ic.scores[i]}")
+    try:
+        args = parse_arguments()
+        ic = ImageChooser(**args)
+        rows = ((ic.batch_size-1) // args['perrow']) + 1
+        args['height'] = args['height'] // rows
+        app = TheApp(ic, **args)
+        app.app.mainloop()
+        if ic.scores is not None:
+            print(f"{len(ic.base_imagepaths)} sets total")
+            for i, label in enumerate(ic.sub):
+                print(f"{label} : {ic.scores[i]}")
+    except MissingImageException as e:
+        print(e.args[0])
 
 if __name__=="__main__":
     try: main()
