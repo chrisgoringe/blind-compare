@@ -47,7 +47,7 @@ class ImageChooser:
             if verbose>1: print("\n".join(self.base_imagepaths))
 
         if not self.batches:
-            def any_matches(the_sub): any(os.path.exists(the_base.replace(self.sub[0], the_sub)) for the_base in candidate_imagepaths)
+            def any_matches(the_sub): return any(os.path.exists(the_base.replace(self.sub[0], the_sub)) for the_base in candidate_imagepaths)
             raise MissingImageException("No image sets - no matches for: "+",".join( sub for sub in self.sub if not any_matches(sub)))
 
         self.batch_size = len(self.sub)
