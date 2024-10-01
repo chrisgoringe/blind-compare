@@ -115,21 +115,22 @@ class TheApp:
         self.set_title()
 
     def keyup(self,k):
-        if k.char=='q': self.app.quit()
+        char = k.char or k.keysym
+        if char=='q': self.app.quit()
         try:
             if self.sort_mode:
-                if k.char=='z':
+                if char=='z':
                     newpath = os.path.join(self.sort_z, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
-                elif k.char=='m':
+                elif char=='m':
                     newpath = os.path.join(self.sort_m, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
                 else: return
             else:
-                if k.char==' ' and self.scorelist:
+                if char==' ' and self.scorelist:
                     self.ic.scorelist(self.scores)
                 else:              
-                    choice = int(self.keymap[int(k.char)])
+                    choice = int(self.keymap[int(char)])
                     if choice<self.ic.batch_size:
                         if (self.scorelist):
                             self.scores.append(choice)
@@ -152,7 +153,7 @@ class CommentArgumentParser(argparse.ArgumentParser):
 
 class ArgumentException(Exception): pass
 
-def parse_arguments():
+def parse_arguments(override):
     parser = CommentArgumentParser("Blind compare image pairs. Normal usage python blind_ab_score.py @arguments.txt", fromfile_prefix_chars='@')
     parser.add_argument('--directory', help="Directory images are in", required=True)
     parser.add_argument('--match', help="String to match to identify first image set")
@@ -167,7 +168,7 @@ def parse_arguments():
     parser.add_argument('--sort_z', default="z", help="When using --sort_mode, move 'z' images to this directory (relative to --directory)")
     parser.add_argument('--sort_m', default="m", help="When using --sort_mode, move 'm' images to this directory (relative to --directory)")
 
-    args = parser.parse_args()
+    args = parser.parse_args() if not override else parser.parse_args(override)
     if not args.sort_mode and not (args.match and args.sub):
         raise ArgumentException("Either --sort_mode (for sorting) or --match and --sub (for comparing) are required")
     
@@ -177,7 +178,10 @@ def parse_arguments():
     return vars(args)
 
 def main():
-    args = parse_arguments()
+    try:
+        args = parse_arguments()
+    except:
+        args = parse_arguments(["@arguments.txt",])
     ic = ImageChooser(**args)
     rows = ((ic.batch_size-1) // args['perrow']) + 1
     args['height'] = args['height'] // rows
