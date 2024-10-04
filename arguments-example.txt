@@ -11,6 +11,7 @@
 # Optional for all runs:
 
 # --height = 800   # Height of app in pixel
+# --recurse        # look in subdirectories
 
 # Required for AB comparison:
 
