@@ -124,7 +124,10 @@ class TheApp:
                 elif k.char=='m':
                     newpath = os.path.join(self.sort_m, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
-                else: return
+                elif k.char==' ': 
+                    pass
+                else:
+                    return
             else:
                 if k.char==' ' and self.scorelist:
                     self.ic.scorelist(self.scores)
