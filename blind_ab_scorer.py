@@ -153,6 +153,10 @@ class TheApp:
                     if not os.path.exists(subdir): os.makedirs(subdir)
                     newpath = os.path.join(subdir, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
+                elif k.char==' ': 
+                    pass
+                else:
+                    return
             else:
                 if char==' ' and self.scorelist:
                     self.ic.scorelist(self.scores)
