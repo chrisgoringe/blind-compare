@@ -8,11 +8,13 @@ class AllDone(Exception): pass
 
 IMAGE_EXT = [".jpg", ".jpeg", ".png"]
 
+DEFAULT_PER_ROW = [0,1,2,3,2,3,3,4,3,3,4,4,4]
+
 def is_image(filepath):
     return(os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() in IMAGE_EXT)
 
 class ImageChooser:
-    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, sort_mode:bool, recurse:bool, **kwargs):
+    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, sort_mode:bool, recurse:bool, noshuffle:bool, **kwargs):
         self.directory = directory
         self.verbose = verbose
 
@@ -30,14 +32,16 @@ class ImageChooser:
         if not candidate_imagepaths:
             raise MissingImageException("No matching images found")
         
-        random.shuffle(candidate_imagepaths)
+        if (not noshuffle):
+            random.shuffle(candidate_imagepaths)
         if verbose>0: print(f"{len(candidate_imagepaths)} base images found")
 
         if sort_mode: 
             self.sub = [".",]
             self.base_imagepaths = candidate_imagepaths
         else:
-            self.sub = [match,] + list(x.strip() for x in sub.split(","))
+            if not sub: self.sub = self.guess_subs(candidate_imagepaths[0], match)
+            else: self.sub = [match,] + list(x.strip() for x in sub.split(","))
             if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
             self.base_imagepaths = [ bip for bip in candidate_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
             
@@ -55,6 +59,17 @@ class ImageChooser:
         self.order = list(range(self.batch_size))
 
         self.pointer = -1
+
+    def guess_subs(self, one_match:str, match_term:str):
+        before, after = one_match.split(match_term)
+        subs = []
+        for f in os.listdir(self.directory):
+            p = os.path.join(self.directory, f)
+            if p.startswith(before) and p.endswith(after):
+                subs += [p[len(before):-len(after)],]
+        print(f"Guessing {subs}")
+        return subs
+
 
     def next_image_set(self):
         self.pointer += 1
@@ -88,21 +103,17 @@ class ImageChooser:
         return i.width / i.height 
 
 class TheApp:
-    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, **kwargs):
+    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, directory:str, **kwargs):
         self.app = customtkinter.CTk()
         self.header = 'ZM sort' if sort_mode else 'AB Compare'
         self.sort_mode = sort_mode
-        if self.sort_mode:
-            self.sort_z = kwargs['sort_z']
-            self.sort_m = kwargs['sort_m']
-            if not os.path.exists(self.sort_z): os.makedirs(self.sort_z, exist_ok=True)
-            if not os.path.exists(self.sort_m): os.makedirs(self.sort_m, exist_ok=True)
+        self.directory = directory
+
         self.ic = ic
         self.height=height
         self.scorelist = scorelist
         self.done = 0
         self.verbose = verbose
-        perrow = perrow if perrow>=1 else ic.batch_size
         if keypad:
             if (perrow>3 or ic.batch_size//perrow>3):
                 raise Exception(f"--keypad incompatible with {ic.batch_size} sets displayed {perrow} per row")
@@ -137,11 +148,10 @@ class TheApp:
         if char=='q': self.app.quit()
         try:
             if self.sort_mode:
-                if char=='z':
-                    newpath = os.path.join(self.sort_z, os.path.basename(self.ic.base_imagepath))
-                    shutil.move(self.ic.base_imagepath, newpath)
-                elif char=='m':
-                    newpath = os.path.join(self.sort_m, os.path.basename(self.ic.base_imagepath))
+                if char in 'zxcvbnm123456789':
+                    subdir = os.path.join(self.directory, char)
+                    if not os.path.exists(subdir): os.makedirs(subdir)
+                    newpath = os.path.join(subdir, os.path.basename(self.ic.base_imagepath))
                     shutil.move(self.ic.base_imagepath, newpath)
             else:
                 if char==' ' and self.scorelist:
@@ -178,21 +188,17 @@ def parse_arguments(override):
     parser.add_argument('--match', help="String to match to identify first image set")
     parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown")
     parser.add_argument('--height', type=int, default=768, help="Height of app")
-    parser.add_argument('--perrow', type=int, default=3, help="Number of images per row")
+    parser.add_argument('--perrow', type=int, help="Number of images per row")
     parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
     parser.add_argument('--scorelist', action="store_true", help="Enter sequence of preferences ")
     parser.add_argument('--verbose', type=int, default=1, help="Verbosity 2 gives spoilers")
     parser.add_argument('--sort_mode', action="store_true", help="Ignore match and subs, show one image at a time, sort with 'z' and m'")
-    parser.add_argument('--sort_z', default="z", help="When using --sort_mode, move 'z' images to this directory (relative to --directory)")
-    parser.add_argument('--sort_m', default="m", help="When using --sort_mode, move 'm' images to this directory (relative to --directory)")
     parser.add_argument('--extensions', default=[], action="append", help="Extra extensions to count as images (.jpg, .jpeg and .png default)")
+    parser.add_argument('--noshuffle', action='store_true', help="don't randomise the order of sets")
 
     args = parser.parse_args() if not override else parser.parse_args(override)
-    if not args.sort_mode and not (args.match and args.sub):
-        raise ArgumentException("Either --sort_mode (for sorting) or --match and --sub (for comparing) are required")
-    
-    args.sort_z = os.path.join(args.directory, args.sort_z)
-    args.sort_m = os.path.join(args.directory, args.sort_m)
+    if not args.sort_mode and not args.match:
+        raise ArgumentException("Either --sort_mode (for sorting) or --match (for comparing) are required")
 
     for e in args.extensions:
         global IMAGE_EXT
@@ -206,6 +212,7 @@ def main():
     except:
         args = parse_arguments(["@arguments.txt",])
     ic = ImageChooser(**args)
+    args['perrow'] = args.get('perrow') or DEFAULT_PER_ROW[ic.batch_size]
     rows = ((ic.batch_size-1) // args['perrow']) + 1
     args['height'] = args['height'] // rows
     app = TheApp(ic, **args)
