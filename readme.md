@@ -23,6 +23,8 @@ made_with_model_three_00080.png
 
 works with `--match=one` and `--sub=two,three`. You can include the match at the start of the sub list if you feel that is clearer (`--sub=one,two,three`)
 
+If you do not specify `--sub` the scorer will attempt to guess by finding patterns in the image names.
+
 In general you want the corresponding images (so all three _00002 images, for instance) to have been generated with the same parameters except for the difference you are testing (in this example, the model used).
 
 ### --rmatch

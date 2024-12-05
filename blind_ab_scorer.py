@@ -1,5 +1,6 @@
 import random, argparse, os, re, shutil
 import customtkinter
+import pyautogui
 from PIL import Image
 from typing import Optional
 
@@ -62,11 +63,12 @@ class ImageChooser:
 
     def guess_subs(self, one_match:str, match_term:str):
         before, after = one_match.split(match_term)
-        subs = []
+        subs = [match_term,]
         for f in os.listdir(self.directory):
             p = os.path.join(self.directory, f)
             if p.startswith(before) and p.endswith(after):
-                subs += [p[len(before):-len(after)],]
+                mt = p[len(before):-len(after)]
+                if (mt!=match_term): subs += [mt,]
         print(f"Guessing {subs}")
         return subs
 
@@ -75,7 +77,9 @@ class ImageChooser:
         self.pointer += 1
         try:
             self.base_imagepath = self.base_imagepaths[self.pointer]
+            if self.verbose: print(f"Loading base image {self.base_imagepath}")
             images = list( Image.open(self.base_imagepath.replace(self.sub[0], sub)) for sub in self.sub )
+            #if self.verbose: print(f"Loading subs {[self.base_imagepath.replace(self.sub[0], sub) for sub in self.sub]}")
         except FileNotFoundError as e:
             raise MissingImageException(*e.args)
         except IndexError:
@@ -99,8 +103,8 @@ class ImageChooser:
        
     @property
     def aspect_ratio(self):
-        i = Image.open(os.path.join(self.directory, self.base_imagepaths[0]))
-        return i.width / i.height 
+        with Image.open(os.path.join(self.directory, self.base_imagepaths[0])) as i:
+            return i.width / i.height 
 
 class TheApp:
     def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, directory:str, **kwargs):
@@ -121,7 +125,7 @@ class TheApp:
         else:
             self.keymap = " 0123456789"
 
-        self.app.geometry(f"{height*ic.aspect_ratio*ic.batch_size}x{height}")
+        self.app.geometry(f"{int(height*ic.aspect_ratio*ic.batch_size)}x{height}")
         self.image_labels = [customtkinter.CTkLabel(self.app, text="") for _ in range(ic.batch_size)]
         
         for i, label in enumerate(self.image_labels): label.grid(row=(i//perrow), column=(i % perrow))
@@ -191,7 +195,8 @@ def parse_arguments(override):
     parser.add_argument('--rmatch', help="Optional regex to identify first image set. --match and --sub still used for replacements")
     parser.add_argument('--match', help="String to match to identify first image set")
     parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown")
-    parser.add_argument('--height', type=int, default=768, help="Height of app")
+    parser.add_argument('--height', type=int, help="Height of app")
+    parser.add_argument('--width', type=int, help="Width of app")
     parser.add_argument('--perrow', type=int, help="Number of images per row")
     parser.add_argument('--keypad', action="store_true", help="Use the keypad layout to select images")
     parser.add_argument('--scorelist', action="store_true", help="Enter sequence of preferences ")
@@ -218,7 +223,13 @@ def main():
     ic = ImageChooser(**args)
     args['perrow'] = args.get('perrow') or DEFAULT_PER_ROW[ic.batch_size]
     rows = ((ic.batch_size-1) // args['perrow']) + 1
-    args['height'] = args['height'] // rows
+
+    s = pyautogui.size()
+    cols = ((ic.batch_size-1) // rows) + 1
+    w = args['width'] or int(s.width )
+    h = args['height'] or int(s.height - 20)
+    args['height'] = min(h // rows, int(w/ic.aspect_ratio) // cols)
+
     app = TheApp(ic, **args)
     app.app.mainloop()
     if ic.scores is not None:
