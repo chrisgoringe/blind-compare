@@ -118,6 +118,10 @@ class TheApp:
         self.scorelist = scorelist
         self.done = 0
         self.verbose = verbose
+
+        rows = ((ic.batch_size-1)//perrow) + 1
+        self.height=int(height//rows)
+        
         if keypad:
             if (perrow>3 or ic.batch_size//perrow>3):
                 raise Exception(f"--keypad incompatible with {ic.batch_size} sets displayed {perrow} per row")
@@ -125,10 +129,11 @@ class TheApp:
         else:
             self.keymap = " 0123456789"
 
-        self.app.geometry(f"{int(height*ic.aspect_ratio*ic.batch_size)}x{height}")
+        self.app.geometry(f"{int(self.height*ic.aspect_ratio*perrow)}x{self.height*rows}")
         self.image_labels = [customtkinter.CTkLabel(self.app, text="") for _ in range(ic.batch_size)]
         
         for i, label in enumerate(self.image_labels): label.grid(row=(i//perrow), column=(i % perrow))
+
 
         self.app.bind("<KeyRelease>", self.keyup)
         self.pick_images()
@@ -227,8 +232,8 @@ def main():
     s = pyautogui.size()
     cols = ((ic.batch_size-1) // rows) + 1
     w = args['width'] or int(s.width )
-    h = args['height'] or int(s.height - 20)
-    args['height'] = min(h // rows, int(w/ic.aspect_ratio) // cols)
+    h = args['height'] or int(s.height - 120)
+    args['height'] = min(h, int(w/ic.aspect_ratio) // cols)
 
     app = TheApp(ic, **args)
     app.app.mainloop()
