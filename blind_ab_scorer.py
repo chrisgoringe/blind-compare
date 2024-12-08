@@ -50,6 +50,8 @@ class ImageChooser:
         if verbose>0: 
             print(f"{self.batches} image sets")
             if verbose>1: print("\n".join(self.base_imagepaths))
+            if self.batches != len(candidate_imagepaths):
+                print(f"Failed to find alternatives for {[x for x in candidate_imagepaths if x not in self.base_imagepaths]}")
 
         if not self.batches:
             def any_matches(the_sub): return any(os.path.exists(the_base.replace(self.sub[0], the_sub)) for the_base in candidate_imagepaths)
