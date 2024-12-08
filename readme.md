@@ -21,22 +21,11 @@ made_with_model_two_00080.png
 made_with_model_three_00080.png
 ```
 
-works with `--match=one` and `--sub=two,three`. You can include the match at the start of the sub list if you feel that is clearer (`--sub=one,two,three`)
-
-If you do not specify `--sub` the scorer will attempt to guess by finding patterns in the image names.
+works with `--match=one`. 
 
 In general you want the corresponding images (so all three _00002 images, for instance) to have been generated with the same parameters except for the difference you are testing (in this example, the model used).
 
-### --rmatch
 
-You can use `--rmatch=REGEX` to do regex matching; `--match` is still used for the substitutions. For instance, if you images to compare start with a digit, 
-you can avoid matching 0s found later in the name:
-
-```
---regex = ^0
---match = 0
---sub   = 1,2
-``` 
 
 ## Running a comparison
 
@@ -83,6 +72,17 @@ If you specify `--keypad` then you pick images using the keypad layout by pressi
 
 If you have more than two images, `--scorelist` means you can pick the top few images in order. Use the spacebar (or select all images) to finish.
 
+### --rmatch
+
+You can use `--rmatch=REGEX` to do regex matching; `--match` is still used for the substitutions. For instance, if you images to compare start with a digit, 
+you can avoid matching 0s found later in the name:
+
+```
+--regex = ^0
+--match = 0
+--sub   = 1,2
+``` 
+
 ## Sorting
 
-Use `--sort_mode` to view images one at a time. Press `z` or `m` to move them into one of two directories.
+Use `--sort_mode` to view images one at a time. Press `zxcvbnm0123456789` to move images into subdirectories.
