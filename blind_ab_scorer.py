@@ -235,7 +235,7 @@ def main():
     cols = ((ic.batch_size-1) // rows) + 1
     w = args['width'] or int(s.width )
     h = args['height'] or int(s.height - 120)
-    args['height'] = min(h, int(w/ic.aspect_ratio) // cols)
+    args['height'] = min(h, rows*int(w/ic.aspect_ratio) // cols)
 
     app = TheApp(ic, **args)
     app.app.mainloop()
