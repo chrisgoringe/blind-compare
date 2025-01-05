@@ -162,7 +162,11 @@ class TheApp:
                 if char in 'zxcvbnm123456789':
                     subdir = os.path.join(self.directory, char)
                     if not os.path.exists(subdir): os.makedirs(subdir)
-                    newpath = os.path.join(subdir, os.path.basename(self.ic.base_imagepath))
+                    base, ext = os.path.splitext(os.path.basename(self.ic.base_imagepath))
+                    newpath = os.path.join(subdir, base + ext)
+                    while os.path.exists(newpath):
+                        base = f"{base}.{random.randint(100000,999999)}"
+                        newpath = os.path.join(subdir, base + ext)
                     shutil.move(self.ic.base_imagepath, newpath)
                 elif k.char==' ': 
                     pass
@@ -233,7 +237,7 @@ def main():
 
     s = pyautogui.size()
     cols = ((ic.batch_size-1) // rows) + 1
-    w = args['width'] or int(s.width )
+    w = args['width'] or int(s.width - 120)
     h = args['height'] or int(s.height - 120)
     args['height'] = min(h, rows*int(w/ic.aspect_ratio) // cols)
 
