@@ -15,7 +15,8 @@ def is_image(filepath):
     return(os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() in IMAGE_EXT)
 
 class ImageChooser:
-    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], verbose:int, sort_mode:bool, recurse:bool, noshuffle:bool, **kwargs):
+    def __init__(self, directory:str, match:Optional[str], rmatch:Optional[str], sub:list[str], 
+                 verbose:int, sort_mode:bool, recurse:bool, noshuffle:bool, allow_missing:bool, **kwargs):
         self.directory = directory
         self.verbose = verbose
 
@@ -44,8 +45,11 @@ class ImageChooser:
             if not sub: self.sub = self.guess_subs(candidate_imagepaths[0], match)
             else: self.sub = [match,] + list(x.strip() for x in sub.split(","))
             if self.sub[0]==self.sub[1]: self.sub=self.sub[1:]
-            self.base_imagepaths = [ bip for bip in candidate_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
-            
+            if not allow_missing:
+                self.base_imagepaths = [ bip for bip in candidate_imagepaths if all(os.path.exists(bip.replace(self.sub[0], sub)) for sub in self.sub) ]
+            else:
+                self.base_imagepaths = candidate_imagepaths
+
         self.batches = len(self.base_imagepaths)
         if verbose>0: 
             print(f"{self.batches} image sets")
@@ -74,16 +78,19 @@ class ImageChooser:
         print(f"Guessing {subs}")
         return subs
 
+    def substituted(self, sub:str) -> Image.Image:
+        path = self.base_imagepath.replace(self.sub[0], sub)
+        return Image.open(path) if os.path.exists(path) else Image.new('RGB', (32,32))
 
-    def next_image_set(self):
+    def next_image_set(self) -> tuple[Image.Image]:
         self.pointer += 1
         try:
             self.base_imagepath = self.base_imagepaths[self.pointer]
             if self.verbose: print(f"Loading base image {self.base_imagepath}")
-            images = list( Image.open(self.base_imagepath.replace(self.sub[0], sub)) for sub in self.sub )
+            images = list( self.substituted(sub) for sub in self.sub )
             #if self.verbose: print(f"Loading subs {[self.base_imagepath.replace(self.sub[0], sub) for sub in self.sub]}")
-        except FileNotFoundError as e:
-            raise MissingImageException(*e.args)
+        #except FileNotFoundError as e:
+        #    raise MissingImageException(*e.args)
         except IndexError:
             raise AllDone()
         random.shuffle(self.order)
@@ -215,6 +222,7 @@ def parse_arguments(override):
     parser.add_argument('--sort_mode', action="store_true", help="Ignore match and subs, show one image at a time, sort with 'z' and m'")
     parser.add_argument('--extensions', default=[], action="append", help="Extra extensions to count as images (.jpg, .jpeg and .png default)")
     parser.add_argument('--noshuffle', action='store_true', help="don't randomise the order of sets")
+    parser.add_argument('--allow_missing', action='store_true', help="include sets with missing images")
 
     args = parser.parse_args() if not override else parser.parse_args(override)
     if not args.sort_mode and not args.match:
