@@ -10,6 +10,7 @@ class AllDone(Exception): pass
 IMAGE_EXT = [".jpg", ".jpeg", ".png"]
 
 DEFAULT_PER_ROW = [0,1,2,3,2,3,3,4,3,3,4,4,4]
+DEFAULT_PER_ROW_KP = [0,1,2,3,2,3,3,3,3,3]
 
 def is_image(filepath):
     return(os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() in IMAGE_EXT)
@@ -242,7 +243,7 @@ def main():
     except:
         args = parse_arguments(["@arguments.txt",])
     ic = ImageChooser(**args)
-    args['perrow'] = args.get('perrow') or DEFAULT_PER_ROW[ic.batch_size]
+    args['perrow'] = args.get('perrow') or (DEFAULT_PER_ROW_KP[ic.batch_size] if args.get('keypad') else DEFAULT_PER_ROW[ic.batch_size])
     rows = ((ic.batch_size-1) // args['perrow']) + 1
 
     s = pyautogui.size()
