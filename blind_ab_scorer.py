@@ -1,4 +1,4 @@
-import random, argparse, os, re, shutil
+import random, argparse, os, re, shutil, time
 import customtkinter
 import pyautogui
 from PIL import Image
@@ -160,8 +160,10 @@ class TheApp:
             if self.verbose: print(f"Missing image: {e.args[0]}")
             self.pick_images()
         self.set_title()
+        self.last_picked_at = time.monotonic()
 
     def keyup(self,k):
+        if (time.monotonic() - self.last_picked_at)<0.2: return
         char = k.char or k.keysym
         if char=='q': self.app.quit()
         try:
