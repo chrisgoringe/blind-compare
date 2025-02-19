@@ -152,3 +152,7 @@ cython_debug/
 #.idea/
 arguments.txt
 local.*
+web/images/*
+*.pem
+
+fix_directory.py
