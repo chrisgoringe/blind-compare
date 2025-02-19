@@ -1,0 +1,39 @@
+#wrap_wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+#button_wrap {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#button_wrap button {
+    font-size: x-large;
+    margin: 4px;
+    width: 100px;
+    color: black;
+    border-radius: 1px;
+}
+#button_wrap button .last {
+    position: relative;
+    right: 0px;
+}
+
+#image_wrap {
+    display : flex;
+    flex-wrap : wrap;
+    justify-content: flex-start;
+    height : auto;
+    overflow : hidden;
+}
+
+#image_wrap img {
+    max-width: calc(100% - 4px);
+    max-height: calc(100% - 4px);
+    object-fit: scale-down;
+}
+
+#status_wrap {
+    
+}
