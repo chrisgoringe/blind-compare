@@ -50,6 +50,10 @@ var project_status
 
 async function load_images() {
     const urls = await( api.get('urls') )
+    if (urls.error) {
+        report_error(urls.error)
+        return
+    }
     const iw = document.getElementById('image_wrap')
     const aspect_ratio = project_details.aspect_ratio ? parseFloat(project_details.aspect_ratio) : 1.0
     layoutImages(iw, urls, aspect_ratio, (i)=>respond({pick:`${i}`}), project_details.n_per_set)
@@ -68,10 +72,20 @@ async function restart() {
 
 async function update_status() {
     project_status = await( api.get('status'))
+    if (project_status.error) {
+        report_error(project_status.error)
+        return
+    }
     document.getElementById('status_wrap').innerHTML = project_status.html
 }
 
-async function update_buttons() {
+function keyPressed(e) {
+    if ("zzxcvbnm".includes(e.key)) {
+        respond({rating:e.key})
+    }
+}
+
+async function update_buttons(just_reset) {
     const buttons = document.getElementById('button_wrap')
     buttons.innerHTML = ''
     const reset = createElement(buttons, "button", {type:'button', innerText:"reset"})
@@ -79,32 +93,16 @@ async function update_buttons() {
         e.stopPropagation()
         restart()
     })
+    if (just_reset) return
     if (project_details.mode=='sort') {
-        const kill = createElement(buttons, "button", {type:'button', innerText:"kill"})
-        kill.addEventListener("click", (e)=>{
-            e.stopPropagation()
-            respond({rating:'z'})
+        ["z","x","c","v","b","n","m"].forEach((letter)=>{
+            const button = createElement(buttons, "button", {type:'button', innerText:letter})
+            button.addEventListener("click", (e)=>{
+                e.stopPropagation()
+                respond({rating:letter})
+            })
         })
-        const work = createElement(buttons, "button", {type:'button', innerText:"work"})
-        work.addEventListener("click", (e)=>{
-            e.stopPropagation()
-            respond({rating:'x'})
-        })
-        const done = createElement(buttons, "button", {type:'button', innerText:"done"})
-        done.addEventListener("click", (e)=>{
-            e.stopPropagation()
-            respond({rating:'c'})
-        })
-        const vv = createElement(buttons, "button", {type:'button', innerText:"v"})
-        vv.addEventListener("click", (e)=>{
-            e.stopPropagation()
-            respond({rating:'v'})
-        })
-        const bb = createElement(buttons, "button", {type:'button', innerText:"b"})
-        bb.addEventListener("click", (e)=>{
-            e.stopPropagation()
-            respond({rating:'b'})
-        })
+        
         const skip = createElement(buttons, "button", {type:'button', innerText:"skip"}, "last")
         skip.addEventListener("click", (e)=>{
             e.stopPropagation()
@@ -113,11 +111,22 @@ async function update_buttons() {
     }
 }
 
+function report_error(error) {
+    update_buttons(true)
+    document.getElementById('image_wrap').innerHTML = ''
+    document.getElementById('status_wrap').innerHTML = error
+}
+
 async function build() {
     project_details = await( api.get('project'))
+    if (project_details.error) {
+        report_error(project_details.error)
+        return
+    } 
     update_buttons()
     load_images()
     update_status()
 }
 
 document.addEventListener('DOMContentLoaded', build)
+document.addEventListener('keypress', keyPressed)

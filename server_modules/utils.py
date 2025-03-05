@@ -1,7 +1,9 @@
-from fastapi import HTTPException
 from fastapi.responses import Response
-from .server_projects import Project
 import os
+
+class ProjectException(Exception): pass
+class FileServeException(ProjectException): pass
+class UnknownExtensionException(FileServeException): pass
 
 MEDIA = {
     ".js": ("text/javascript",'r'),
@@ -19,11 +21,7 @@ def serve_file(filepath, directory="web"):
         with open(os.path.join(directory, filepath),read_mode) as f:
             return Response(content=f.read(), media_type=media_type )
     except TypeError:
-        print(f"file {filepath} extension not recognised")
-        return {}
+        raise UnknownExtensionException(os.path.splitext(filepath)[1].lower())
     except Exception as e:
-        print(f"{e}") 
-        return {}
-    
-def serve_image(filename):
-    return serve_file(filename, directory=Project.get_project().directory)
+        raise FileServeException(f"{e}")
+

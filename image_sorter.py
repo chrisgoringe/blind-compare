@@ -34,11 +34,15 @@ def fix(source:str, prefix:str, target:str, extension=".png", recurse=False, sta
 
     for path in original_paths:
         while os.path.exists(newpath(idx)): idx += 1
-        print(f"{path} -> {newpath(idx)}")
+        thenewpath = newpath(idx)
+
+        print(f"{path} -> {thenewpath}")
         shutil.move(path, newpath(idx))
+
         txtpath = os.path.splitext(path)[0] + ".txt"
         if os.path.exists(txtpath): 
-            newtxtpath = os.path.split(newpath(idx))[0] + ".txt"
+            newtxtpath = os.path.split(thenewpath)[0] + ".txt"
+            print(f"{txtpath} -> {newtxtpath}")
             shutil.move(txtpath, newtxtpath)
 
 def distribute(source:str, recurse:bool, target:str, **kwargs):
@@ -54,8 +58,8 @@ def main():
 
     a.add_argument('--justfix', action="store_true", help="Just standardise names in directory")
 
-    a.add_argument('--source', default=r"A:\Images\tosort", help="source directory")
-    a.add_argument('--target', default=r"A:\Images", help="target for distribute")
+    a.add_argument('--source', default=None, help="source directory")
+    a.add_argument('--target', default=None, help="target for distribute")
     a.add_argument('--prefix', default=None, help="prefix for sorted files. Default is a random 6 digit string")
     a.add_argument('--norecurse', action='store_true', help="don't search source recursively")
     a.add_argument('--extension', default=".png", help="extension to search for. Case insensitive")

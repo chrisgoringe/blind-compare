@@ -11,7 +11,7 @@
 #button_wrap button {
     font-size: x-large;
     margin: 4px;
-    width: 100px;
+    min-width: 70px;
     color: black;
     border-radius: 1px;
 }
@@ -35,5 +35,5 @@
 }
 
 #status_wrap {
-    
+    font-size: large;
 }

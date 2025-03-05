@@ -1,14 +1,21 @@
-from blind_ab_scorer import ImageChooser, AllDone
+from blind_ab_scorer import ImageChooser, AllDone, MissingImageException
 import os, random
 from typing import Self
+from .utils import ProjectException
 
-class ProjectException(Exception): pass
-
+class NoImagesException(ProjectException): pass
+class NoMoreImagesException(ProjectException): pass
+class NoSuchProjectException(ProjectException): pass
+    
 class Project:
-    def __init__(self, directory, **kwargs):
-        self.ic:ImageChooser = ImageChooser(directory=directory, **kwargs)
-        self.latest_images:list[str] = None
-        self.directory = directory
+    def __init__(self, directory, name=None, **kwargs):
+        try:
+            self.ic:ImageChooser = ImageChooser(directory=directory, **kwargs)
+            self.latest_images:list[str] = None
+            self.directory = directory
+            self.name = name or os.path.split(directory)[1]
+        except MissingImageException:
+            raise NoImagesException(f"No images")
 
     def image_details(self, index=0) -> tuple[str,str]:
         filename = os.path.split(self.latest_images[index])[1]
@@ -18,9 +25,8 @@ class Project:
     def next_image_set(self) -> list[str]:
         try:
             self.latest_images = self.next_image_set_impl()
-        except Exception as e:
-            print(e)
-            self.latest_images = []
+        except AllDone as e:
+            raise NoMoreImagesException(str(e))
         return [f"image/{f}" for f in self.latest_images]
     
     def next_image_set_impl(self) -> list[str]:
@@ -31,6 +37,7 @@ class Project:
         dic['n_per_set'] = self.ic.batch_size
         dic['n_sets'] = self.ic.batches
         dic['aspect_ratio'] = self.ic.aspect_ratio
+        dic['name'] = self.name
         return dic
 
     def introduction_impl(self) -> dict: return {}
@@ -42,7 +49,7 @@ class Project:
     def response_impl(self, response:dict): pass
 
     def status(self): 
-        return {'html':f"Done {self.ic.pointer} of {self.ic.batches}"}
+        return {'html':f"Done {self.ic.pointer} of {self.ic.batches} in '{self.name}'"}
     
     current_project:Self = None
     args = None
@@ -66,7 +73,7 @@ class SortProject(Project):
     def introduction_impl(self) -> dict: return { 'mode':'sort' }
 
     def response_impl(self, response):
-        if (rating := response.get('rating', None)) in ['z','x','c','v','b']:
+        if (rating := response.get('rating', None)) in ['z','x','c','v','b','n','m']:
             self.ic.move_file(rating, verbose=True)
         elif rating==' ':
             pass
