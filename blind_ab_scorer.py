@@ -3,6 +3,7 @@ import customtkinter
 import pyautogui
 from PIL import Image
 from typing import Optional
+from functools import cached_property
 
 class MissingImageException(Exception): pass
 class AllDone(Exception): pass
@@ -14,7 +15,12 @@ DEFAULT_PER_ROW = [0,1,2,3,2,3,3,4,3,3,4,4,4]
 DEFAULT_PER_ROW_KP = [0,1,2,3,2,3,3,3,3,3]
 
 def is_image(filepath):
-    return(os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() in IMAGE_EXT)
+    return(os.path.isfile(filepath) and 
+           os.path.splitext(filepath)[1].lower() in IMAGE_EXT and 
+           not os.path.split(filepath)[1].startswith('.'))
+
+def aspect_ratio(path):
+    with Image.open(path) as i: return i.width/i.height
 
 def _move_file(basedir, subdir, filepath, verbose=False):
     subdir = os.path.join(basedir, subdir)
@@ -43,13 +49,16 @@ class ImageChooser:
         else:         matches = lambda a : match in a
 
         candidate_imagepaths = []
-        def scan_directory(d):
+        def scan_directory(d): 
+            if os.path.split(d)[1] in 'zxc':
+                print(f"excluding {d}")
+                return
             try:
                 for f in os.listdir(d):
                     if matches(f) and is_image(os.path.join(d,f)):      candidate_imagepaths.append( os.path.join(d,f) )
                     if recurse    and os.path.isdir(os.path.join(d,f)): scan_directory(os.path.join(d,f))
             except Exception as e:
-                print(f"Problem reading directory {d}")
+                print(f"Problem reading directory {d} - {e}")
 
         for directory in self.directories:
             scan_directory(directory)
@@ -147,15 +156,17 @@ class ImageChooser:
         print(s)
         return s
        
-    @property
-    def aspect_ratio(self):
-        try:
-            with Image.open(self.base_imagepaths[max(self.pointer,0)]) as i:
-                return i.width / i.height 
-        except:
-            return 1.0
+    #@property
+    #def aspect_ratio(self):
+    #    try:
+    #        with Image.open(self.base_imagepaths[max(self.pointer,0)]) as i:
+    #            return i.width / i.height 
+    #    except:
+    #        return 1.0
         
-
+    @cached_property
+    def guess_widest_aspect_ratio(self):
+        return max( aspect_ratio(p) for p in random.choices(self.base_imagepaths, k=20) )
 
 class TheApp:
     def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, directory:list[str], move_chosen=None, **kwargs):
@@ -180,7 +191,7 @@ class TheApp:
         else:
             self.keymap = " 0123456789"
 
-        self.app.geometry(f"{int(self.height*ic.aspect_ratio*perrow)}x{self.height*rows}")
+        self.app.geometry(f"{int(self.height*ic.guess_widest_aspect_ratio*perrow)}x{self.height*rows}")
         self.image_labels = [customtkinter.CTkLabel(self.app, text="") for _ in range(ic.batch_size)]
         
         for i, label in enumerate(self.image_labels): label.grid(row=(i//perrow), column=(i % perrow))
@@ -213,11 +224,8 @@ class TheApp:
     def move_file(self, subdir, choice):
         _move_file(self.first_directory, subdir, self.image_set[choice].filename, self.verbose)
 
-
-
-
     def keyup(self,k):
-        if (time.monotonic() - self.last_picked_at)<0.2: return
+        if (time.monotonic() - self.last_picked_at)<0.1: return
         char = k.char or k.keysym
         if char=='q': self.app.quit()
         try:
@@ -305,7 +313,7 @@ def main():
     cols = ((ic.batch_size-1) // rows) + 1
     w = args['width'] or int(s.width - 120)
     h = args['height'] or int(s.height - 120)
-    args['height'] = min(h, rows*int(w/ic.aspect_ratio) // cols)
+    args['height'] = min(h, rows*int(w/ic.guess_widest_aspect_ratio) // cols)
 
     app = TheApp(ic, **args)
     app.app.mainloop()

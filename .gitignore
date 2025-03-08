@@ -156,3 +156,4 @@ web/images/*
 *.pem
 
 fix_directory.py
+data.csv

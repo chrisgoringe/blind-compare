@@ -36,7 +36,7 @@ class Project:
         dic = self.introduction_impl()
         dic['n_per_set'] = self.ic.batch_size
         dic['n_sets'] = self.ic.batches
-        dic['aspect_ratio'] = self.ic.aspect_ratio
+        dic['aspect_ratio'] = self.ic.guess_widest_aspect_ratio
         dic['name'] = self.name
         return dic
 
