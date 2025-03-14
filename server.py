@@ -10,10 +10,17 @@ current_project = None
 root_dir = r"C:\Users\chris\Documents\GitHub\ComfyUI\output"
 
 PROJECTS = [
-    (PickProject, { "directory":r"C:\Users\chris\Documents\GitHub\ComfyUI\output\compare", "match":"1.0" }),
+    #(PickProject, { "directory":r"C:\Users\chris\Documents\GitHub\ComfyUI\output\compare", "match":"" }),
+    (SortProject, { "directory":r"A:\Images\candidates\resort", "buttons":['z', 'x', 'c', 'v', 'b'] }),
 ] + [
-    (SortProject, { "directory" : os.path.join(root_dir, dir) }) 
-            for dir in ["cyber", "cyber2", "cyber3", "cyber4", "cyber5", "fluxllm3", ]
+    (SortProject, { "directory" : os.path.join(root_dir, dir), "buttons":b or ['z', 'x', 'c', 'v', 'b', 'n'] }) 
+            for dir, b in [("cyber1", ['z','x']), 
+                           ("cyber2", ['z','x']), 
+                           ("cyber3", None), 
+                           ("cyber4", None), 
+                           ("cyber5", None), 
+                           ("fluxllm3", None), 
+                           ("compare", None)]
 ]
 
 def setup_project(n):

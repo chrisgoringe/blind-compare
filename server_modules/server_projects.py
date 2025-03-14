@@ -67,13 +67,14 @@ class Project:
         return cls.current_project
 
 class SortProject(Project):
-    def __init__(self, directory, **kwargs):
+    def __init__(self, directory, buttons=['z','x','c','v','b','n'], **kwargs):
         super().__init__(directory=directory, match=".", sort_mode=True)
+        self.buttons = buttons
 
-    def introduction_impl(self) -> dict: return { 'mode':'sort' }
+    def introduction_impl(self) -> dict: return { 'mode':'sort', 'buttons':self.buttons }
 
     def response_impl(self, response):
-        if (rating := response.get('rating', None)) in ['z','x','c','v','b','n','m']:
+        if (rating := response.get('rating', None)) in self.buttons:
             self.ic.move_file(rating, verbose=True)
         elif rating==' ':
             pass

@@ -56,7 +56,7 @@ async function load_images() {
     }
     const iw = document.getElementById('image_wrap')
     const aspect_ratio = project_details.aspect_ratio ? parseFloat(project_details.aspect_ratio) : 1.0
-    layoutImages(iw, urls, aspect_ratio, (i)=>respond({pick:`${i}`}), project_details.n_per_set)
+    layoutImages(iw, urls, aspect_ratio, (i)=>respond({pick:`${i}`}), project_details.n_per_set, (iw.getBoundingClientRect().y+4))
 }
 
 async function respond(response) {
@@ -95,7 +95,7 @@ async function update_buttons(just_reset) {
     })
     if (just_reset) return
     if (project_details.mode=='sort') {
-        ["z","x","c","v","b","n","m"].forEach((letter)=>{
+        project_details.buttons.forEach((letter)=>{
             const button = createElement(buttons, "button", {type:'button', innerText:letter})
             button.addEventListener("click", (e)=>{
                 e.stopPropagation()

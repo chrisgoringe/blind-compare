@@ -1,4 +1,4 @@
-export function layoutImages(container, imageUrls, aspectRatio, imgClick, columns) {
+export function layoutImages(container, imageUrls, aspectRatio, imgClick, columns, used_vertical_space) {
     container.innerHTML = ''
     const image_count = imageUrls.length
     if (!columns) {
@@ -13,7 +13,7 @@ export function layoutImages(container, imageUrls, aspectRatio, imgClick, column
     imageUrls.forEach((url, i) => {
         const imgContainer = document.createElement('div');
         imgContainer.style.maxWidth = `${100/columns}%`;
-        imgContainer.style.maxHeight = `${window.innerHeight/rows}px`
+        imgContainer.style.maxHeight = `${(window.innerHeight-used_vertical_space)/rows}px`
 
         const img = document.createElement('img');
         img.src = url;

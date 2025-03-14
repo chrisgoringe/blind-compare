@@ -40,7 +40,7 @@ def _move_file(basedir, subdir, filepath, verbose=False):
 
 class ImageChooser:
     def __init__(self, directory:list[str], match:Optional[str], rmatch:Optional[str]=None, sub:list[str]=None, 
-                 verbose:int=0, sort_mode:bool=False, recurse:bool=False, noshuffle:bool=False, allow_missing:bool=True, **kwargs):
+                 verbose:int=0, sort_mode:bool=False, recurse:bool=False, noshuffle:bool=False, allow_missing:bool=True, directory_exclude:str="zxc", **kwargs):
         self.directories = directory if isinstance(directory,list) else [directory,]
         self.verbose = verbose
 
@@ -50,7 +50,7 @@ class ImageChooser:
 
         candidate_imagepaths = []
         def scan_directory(d): 
-            if os.path.split(d)[1] in 'zxc':
+            if os.path.split(d)[1] in directory_exclude:
                 print(f"excluding {d}")
                 return
             try:
@@ -275,6 +275,7 @@ def parse_arguments(override):
     parser = CommentArgumentParser("Blind compare image pairs. Normal usage python blind_ab_score.py @arguments.txt", fromfile_prefix_chars='@')
     parser.add_argument('--directory', action="append", help="Directory images are in. Can be specified multiple times.", required=True)
     parser.add_argument('--recurse', action="store_true", help="include subdirectories")
+    parser.add_argument('--directory_exclude', default="zxc", help="when recursing, ignore any directory path ending with a single letter directory in this list")
     parser.add_argument('--rmatch', help="Optional regex to identify first image set. --match and --sub still used for replacements")
     parser.add_argument('--match', help="String to match to identify first image set")
     parser.add_argument('--sub', help="Replacement string to go from first image to second. If comma separated list, all are shown")
