@@ -169,7 +169,7 @@ class ImageChooser:
         return max( aspect_ratio(p) for p in random.choices(self.base_imagepaths, k=20) )
 
 class TheApp:
-    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, directory:list[str], move_chosen=None, **kwargs):
+    def __init__(self, ic:ImageChooser, height:int, perrow:int, keypad:bool, scorelist:bool, verbose:int, sort_mode:bool, directory:list[str], **kwargs):
         self.app = customtkinter.CTk()
         self.header = 'ZM sort' if sort_mode else 'AB Compare'
         self.sort_mode = sort_mode
@@ -180,6 +180,10 @@ class TheApp:
         self.scorelist = scorelist
         self.done = 0
         self.verbose = verbose
+
+        self.move_first = kwargs.get('move_first', None)
+        self.move_chosen = kwargs.get('move_chosen', None)
+        self.move_unchosen = kwargs.get('move_unchosen', None)
 
         rows = ((ic.batch_size-1)//perrow) + 1
         self.height=int(height//rows)
@@ -196,9 +200,9 @@ class TheApp:
         
         for i, label in enumerate(self.image_labels): label.grid(row=(i//perrow), column=(i % perrow))
 
-        self.move_chosen = move_chosen
-        if self.move_chosen and (self.sort_mode):
-            raise ParameterException("move_chosen not compatible with sort_mode")
+        if (self.move_chosen or self.move_unchosen or self.move_first) and (self.sort_mode):
+            print("move_first/move_chosen/move_unchosen not compatible with sort_mode. Ignoring them.")
+            self.move_first, self.move_chosen, self.move_unchosen = None, None, None
 
         self.app.bind("<KeyRelease>", self.keyup)
         self.pick_images()
@@ -239,8 +243,11 @@ class TheApp:
             else:
                 if char==' ':
                     if self.scorelist: 
-                        if self.move_chosen: 
-                            for c in self.scores: self.move_file(self.move_chosen, c)
+                        if self.move_first or self.move_chosen or self.move_unchosen:
+                            for c in range(len(self.image_set)):
+                                if self.move_first and c==self.scores[0]:         self.move_file(self.move_first, c)
+                                elif self.move_chosen and c in self.scores:       self.move_file(self.move_chosen, c)
+                                elif self.move_unchosen and c not in self.scores: self.move_file(self.move_unchosen, c)
                         self.ic.scorelist(self.scores)
                 else:              
                     choice = int(self.keymap[int(char)])
@@ -286,7 +293,9 @@ def parse_arguments(override):
     parser.add_argument('--scorelist', action="store_true", help="Enter sequence of preferences ")
     parser.add_argument('--verbose', type=int, default=1, help="Verbosity 2 gives spoilers")
     parser.add_argument('--sort_mode', action="store_true", help="Ignore match and subs, show one image at a time, sort with 'z' and m'")
-    parser.add_argument('--move_chosen', type=str, help="Move first pick from each set to this subdirectory")
+    parser.add_argument('--move_first', type=str, help="Move first pick from each set to this subdirectory")
+    parser.add_argument('--move_chosen', type=str, help="Move picks from each set to this subdirectory (if move_first also specified, this applies to subsequent picks only)")
+    parser.add_argument('--move_unchosen', type=str, help="Move unpicked from each set to this subdirectory")
     parser.add_argument('--extensions', default=[], action="append", help="Extra extensions to count as images (.jpg, .jpeg and .png default)")
     parser.add_argument('--noshuffle', action='store_true', help="don't randomise the order of sets")
     parser.add_argument('--allow_missing', action='store_true', help="include sets with missing images")
