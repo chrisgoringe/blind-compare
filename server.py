@@ -3,33 +3,38 @@ from fastapi import FastAPI
 from server_modules.server_projects import Project, PickProject, SortProject, NoSuchProjectException, NoImagesException, NoMoreImagesException
 from server_modules.utils import serve_file
 import os
+from typing import Optional
 
 app = FastAPI()
-current_project = None
 
-root_dir = r"C:\Users\chris\Documents\GitHub\ComfyUI\output"
-
-PROJECTS = [
-    #(PickProject, { "directory":r"C:\Users\chris\Documents\GitHub\ComfyUI\output\compare", "match":"" }),
-    (SortProject, { "directory":r"A:\Images\candidates\resort", "buttons":['z', 'x', 'c', 'v', 'b'] }),
-] + [
-    (SortProject, { "directory" : os.path.join(root_dir, dir), "buttons":b or ['z', 'x', 'c', 'v', 'b', 'n'] }) 
-            for dir, b in [("cyber1", ['z','x']), 
-                           ("cyber2", ['z','x']), 
-                           ("cyber3", None), 
-                           ("cyber4", None), 
-                           ("cyber5", None), 
-                           ("fluxllm3", None), 
-                           ("compare", None)]
+root_dirs = [
+    r"C:\Users\chris\Documents\GitHub\ComfyUI\output",
+    r"A:\Images\candidates"
 ]
 
-def setup_project(n):
-    global current_project
-    if current_project!=n: 
-        Project.current_project = None
-        try: Project.setup( *PROJECTS[int(n)] )
-        except (TypeError, IndexError): raise NoSuchProjectException(n)
-    current_project = n
+names = { 'bin':'z', 'flux':'x', 'done':'c', 'out':'v', 'pony':'b', 'bad':'1', 'ok':'2', 'priority':'3' }
+
+b_pony = [names.get(x,x) for x in ['bin','pony','flux','done','out']]  
+b_flux = [names.get(x,x) for x in ['bin','flux','pony','done','out']]
+b_123  = [names.get(x,x) for x in ['bad','pony','flux', 'priority', 'done']]
+
+PROJECTS = {
+    k :(SortProject, { "directory" : os.path.join(root_dirs[n], dir), "buttons":b, **a }) 
+            for k, n, dir, b, a in [
+                            ("c", 0, "compare",  b_pony, {}), 
+                            ("1", 0, "cyber1",   b_pony, {}), 
+                            ("2", 0, "cyber2",   b_pony, {}), 
+                            ("3", 0, "cyber3",   b_pony, {}), 
+                            ("f", 0, "fluxllm3", b_flux, {}), 
+                            ("r", 1, "resort",   b_123,  {}),
+                            ]
+}
+
+def setup_project(n, m):
+    if Project.current_project!=n: 
+        Project.clear()
+        if n in PROJECTS: Project.setup( *PROJECTS[n], n )
+        else:             Project.setup( PickProject, { "directory":os.path.join(root_dirs[0],"compare"), "match":n, "move_chosen":m }, n)
 
 def error_wrapping(function, *args, **kwargs):
     try: return function(*args, **kwargs)
@@ -41,8 +46,8 @@ def error_wrapping(function, *args, **kwargs):
         print(e)    
         return {}
 
-def splash(n):
-    setup_project(n)
+def splash(n:str, m:Optional[str]):
+    setup_project(n, m)
     return serve_file("index.html")
 
 @app.get("/")
@@ -50,8 +55,8 @@ def root():
     return {}
 
 @app.get("/splash")
-def true_root(n:str):
-    return error_wrapping(splash, n)
+def true_root(n:str, m:Optional[str]=None):
+    return error_wrapping(splash, n, m)
 
 @app.get("/project")
 def project():
@@ -73,7 +78,7 @@ def status():
 
 @app.get("/reset")
 def reset():
-    Project.current_project = None
+    Project.clear()
     return {}
 
 @app.post("/response")

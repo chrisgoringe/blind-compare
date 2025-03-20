@@ -12,6 +12,13 @@ function createElement(parent, type, attributes, clss) {
     return elem;
  }
 
+ const names = {
+    'z':'bin', 'x':'flux', 'c':'done', 'v':'out', 'b':'pony', '1':'bin', '2':'keep', '3':'priority'
+ }
+ function get_name(letter) {
+    return names[letter] || letter
+ }
+
  class API {
     constructor(root) {
         this.root = root;
@@ -96,19 +103,20 @@ async function update_buttons(just_reset) {
     if (just_reset) return
     if (project_details.mode=='sort') {
         project_details.buttons.forEach((letter)=>{
-            const button = createElement(buttons, "button", {type:'button', innerText:letter})
+            const button = createElement(buttons, "button", {type:'button', innerText:get_name(letter)})
             button.addEventListener("click", (e)=>{
                 e.stopPropagation()
                 respond({rating:letter})
             })
         })
-        
-        const skip = createElement(buttons, "button", {type:'button', innerText:"skip"}, "last")
-        skip.addEventListener("click", (e)=>{
-            e.stopPropagation()
-            respond({rating:' '})
-        })
     }
+        
+    const skip = createElement(buttons, "button", {type:'button', innerText:"skip"}, "last")
+    skip.addEventListener("click", (e)=>{
+        e.stopPropagation()
+        respond({rating:' '})
+    })
+
 }
 
 function report_error(error) {

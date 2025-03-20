@@ -53,11 +53,18 @@ class Project:
     
     current_project:Self = None
     args = None
+    current:str = None
 
     @classmethod
-    def setup(cls, clazz, args={}):
+    def setup(cls, clazz, args={}, current:str=""):
         cls.args = args
         cls.clazz = clazz
+        cls.current = current
+
+    @classmethod
+    def clear(cls):
+        cls.current = None
+        cls.current_project = None
 
     @classmethod
     def get_project(cls) -> Self:
@@ -68,7 +75,7 @@ class Project:
 
 class SortProject(Project):
     def __init__(self, directory, buttons=['z','x','c','v','b','n'], **kwargs):
-        super().__init__(directory=directory, match=".", sort_mode=True)
+        super().__init__(directory=directory, match=".", sort_mode=True, **kwargs)
         self.buttons = buttons
 
     def introduction_impl(self) -> dict: return { 'mode':'sort', 'buttons':self.buttons }
@@ -83,15 +90,19 @@ class SortProject(Project):
         
 class PickProject(Project):
     def __init__(self, directory, match, **kwargs):
-        super().__init__(directory=directory, match=match)
+        super().__init__(directory=directory, match=match, **kwargs)
         self.scores = [0,]*self.ic.batch_size
 
     def introduction_impl(self) -> dict: return { 'mode':'pick' }
 
     def response_impl(self, response):
         try:
-            pick = int(response.get('pick',''))
-            self.ic.score(pick, and_print=True)
+            p = response.get('pick','')
+            if p==' ':
+                pass
+            else:
+                pick = int(response.get('pick',''))
+                self.ic.score(pick, and_print=True)
         except ValueError:
             raise ProjectException(f"{response}")
         except IndexError:
