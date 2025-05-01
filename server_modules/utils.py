@@ -2,7 +2,10 @@ from fastapi.responses import Response
 import os
 
 class ProjectException(Exception): pass
-class FileServeException(ProjectException): pass
+class FileServeException(ProjectException):
+    def __init__(self, filepath, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filepath=filepath
 class UnknownExtensionException(FileServeException): pass
 
 MEDIA = {
@@ -21,7 +24,7 @@ def serve_file(filepath, directory="web"):
         with open(os.path.join(directory, filepath),read_mode) as f:
             return Response(content=f.read(), media_type=media_type )
     except TypeError:
-        raise UnknownExtensionException(os.path.splitext(filepath)[1].lower())
+        raise UnknownExtensionException(filepath, os.path.splitext(filepath)[1].lower())
     except Exception as e:
-        raise FileServeException(f"{e}")
+        raise FileServeException(filepath, f"{e}")
 

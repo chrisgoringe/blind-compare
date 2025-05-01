@@ -22,7 +22,7 @@ def is_image(filepath):
 def aspect_ratio(path):
     with Image.open(path) as i: return i.width/i.height
 
-def _move_file(basedir, subdir, filepath, verbose=False):
+def _move_file(basedir, subdir, filepath, verbose=False) -> list[tuple[str,str]]:
     subdir = os.path.join(basedir, subdir)
     if not os.path.exists(subdir): os.makedirs(subdir)
     base, ext = os.path.splitext(os.path.basename(filepath))
@@ -31,22 +31,30 @@ def _move_file(basedir, subdir, filepath, verbose=False):
         base = f"{base}_{random.randint(100000,999999)}"
         newpath = os.path.join(subdir, base + ext)
     shutil.move(filepath, newpath)
+    moves = [(filepath, newpath), ]
     if verbose: print(f"Moved {filepath} to {newpath}")
     txtfilepath = os.path.splitext(filepath)[0]+".txt"
     if os.path.exists(txtfilepath):
         newtxtpath = os.path.splitext(newpath)[0]+".txt"
         shutil.move(txtfilepath, newtxtpath)
+        moves.append((txtfilepath, newtxtpath))
         if verbose: print(f"Moved {txtfilepath} to {newtxtpath}")
+    return moves
+
 
 class ImageChooser:
     def __init__(self, directory:list[str], match:Optional[str], rmatch:Optional[str]=None, sub:list[str]=None, 
                  verbose:int=0, sort_mode:bool=False, recurse:bool=False, noshuffle:bool=False, allow_missing:bool=True, directory_exclude:str="zxc", **kwargs):
         self.directories = directory if isinstance(directory,list) else [directory,]
         self.verbose = verbose
+        self.last_moves:list[tuple[str,str]] = []
 
-        if sort_mode: matches = lambda a : True
-        elif rmatch:  matches = lambda a : re.match(rmatch, a)
-        else:         matches = lambda a : match in a
+        if sort_mode and match is None: 
+            matches = lambda a : True
+        elif rmatch:  
+            matches = lambda a : re.match(rmatch, a)
+        else:         
+            matches = lambda a : match in a
 
         candidate_imagepaths = []
         def scan_directory(d): 
@@ -99,10 +107,26 @@ class ImageChooser:
 
         self.pointer = -1
 
+    def get_text(self):
+        if len(self.last_sent_images)!=1: return "Can't get info for multiple images"
+        if os.path.exists(filepath:=os.path.splitext(self.last_sent_images[0])[0]+".txt"):
+            with (open(filepath, "r")) as f:
+                return f.read()
+        else:
+            return "No .txt file"
+        
+    def undo_last(self, verbose=True):
+        for (mv_from, mv_to) in self.last_moves:
+            shutil.move(mv_to, mv_from)
+            if verbose: print(f"moved {mv_to} back to {mv_from}")
+        if len(self.last_moves): self.pointer -= 2
+        self.last_moves = []
+        
     def move_file(self, subdir, verbose=False):
         assert(len(self.last_sent_images)==1)
         assert(len(self.directories)==1)
-        _move_file(self.directories[0], subdir, self.last_sent_images[0], verbose)
+        self.last_moves = _move_file(self.directories[0], subdir, self.last_sent_images[0], verbose)
+        
 
     def guess_subs(self, one_match:str, match_term:str):
         before, after = one_match.split(match_term)
@@ -223,10 +247,10 @@ class TheApp:
         self.last_picked_at = time.monotonic()
 
     def move_basefile(self, subdir):
-        _move_file(self.first_directory, subdir, self.ic.base_imagepath, self.verbose)
+        self.ic.last_moves = _move_file(self.first_directory, subdir, self.ic.base_imagepath, self.verbose)
 
     def move_file(self, subdir, choice):
-        _move_file(self.first_directory, subdir, self.image_set[choice].filename, self.verbose)
+        self.ic.last_moves = _move_file(self.first_directory, subdir, self.image_set[choice].filename, self.verbose)
 
     def keyup(self,k):
         if (time.monotonic() - self.last_picked_at)<0.1: return
@@ -245,9 +269,9 @@ class TheApp:
                     if self.scorelist: 
                         if self.move_first or self.move_chosen or self.move_unchosen:
                             for c in range(len(self.image_set)):
-                                if self.move_first and c==self.scores[0]:         self.move_file(self.move_first, c)
-                                elif self.move_chosen and c in self.scores:       self.move_file(self.move_chosen, c)
-                                elif self.move_unchosen and c not in self.scores: self.move_file(self.move_unchosen, c)
+                                if self.move_first and self.scores and c==self.scores[0]: self.move_file(self.move_first, c)
+                                elif self.move_chosen and c in self.scores:               self.move_file(self.move_chosen, c)
+                                elif self.move_unchosen and c not in self.scores:         self.move_file(self.move_unchosen, c)
                         self.ic.scorelist(self.scores)
                 else:              
                     choice = int(self.keymap[int(char)])

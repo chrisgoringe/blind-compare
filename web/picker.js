@@ -12,9 +12,8 @@ function createElement(parent, type, attributes, clss) {
     return elem;
  }
 
- const names = {
-    'z':'bin', 'x':'flux', 'c':'done', 'v':'out', 'b':'pony', '1':'bin', '2':'keep', '3':'priority'
- }
+ var names = { }
+
  function get_name(letter) {
     return names[letter] || letter
  }
@@ -64,10 +63,17 @@ async function load_images() {
     const iw = document.getElementById('image_wrap')
     const aspect_ratio = project_details.aspect_ratio ? parseFloat(project_details.aspect_ratio) : 1.0
     layoutImages(iw, urls, aspect_ratio, (i)=>respond({pick:`${i}`}), project_details.n_per_set, (iw.getBoundingClientRect().y+4))
+    document.getElementById('button_wrap').childNodes.forEach((b)=>{b.disabled = false})
 }
 
-async function respond(response) {
-    await( api.post("response", response) )
+async function respond(response, image_unchanged) {
+    if (!image_unchanged) {
+        document.getElementById('button_wrap').childNodes.forEach((b)=>{b.disabled = true})
+        document.getElementById('image_wrap').innerHTML = ''
+    }
+    const reply = await( api.post("response", response) )
+    if (reply.info) document.getElementById('status_wrap').innerHTML = reply.info
+    if (image_unchanged) return
     load_images()
     update_status()
 }
@@ -102,6 +108,9 @@ async function update_buttons(just_reset) {
     })
     if (just_reset) return
     if (project_details.mode=='sort') {
+        if (project_details.labels) {
+            names = project_details.labels
+        }
         project_details.buttons.forEach((letter)=>{
             const button = createElement(buttons, "button", {type:'button', innerText:get_name(letter)})
             button.addEventListener("click", (e)=>{
@@ -115,6 +124,19 @@ async function update_buttons(just_reset) {
     skip.addEventListener("click", (e)=>{
         e.stopPropagation()
         respond({rating:' '})
+    })
+    skip.style.marginLeft = '30px'
+
+    const undo = createElement(buttons, "button", {type:'button', innerText:"undo"}, "last")
+    undo.addEventListener("click", (e)=>{
+        e.stopPropagation()
+        respond({rating:'__undo__'})
+    })
+
+    const more_info = createElement(buttons, "button", {type:'button', innerText:"info"}, "last")
+    more_info.addEventListener("click", (e)=>{
+        e.stopPropagation()
+        respond({rating:'__info__'}, true)
     })
 
 }

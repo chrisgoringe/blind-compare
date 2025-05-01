@@ -3,6 +3,11 @@ import os, random
 from typing import Self
 from .utils import ProjectException
 
+SortingNames = { 'bin':'z', 'flux':'x', 'done':'c', 'out':'v', 'pony':'b', 'bad':'1', 'ok':'2', 'priority':'3', 'keep':'a', 'sdxl':'v' }
+SortingNames = SortingNames | { 'sfw':'h', 'nsfw':'j', 'sp':'k' }
+
+ReversedSortingNames = { SortingNames[k]:k for k in SortingNames }
+
 class NoImagesException(ProjectException): pass
 class NoMoreImagesException(ProjectException): pass
 class NoSuchProjectException(ProjectException): pass
@@ -43,8 +48,7 @@ class Project:
     def introduction_impl(self) -> dict: return {}
 
     def response(self, response:dict): 
-        self.response_impl(response)
-        return {}
+        return self.response_impl(response) or {}
     
     def response_impl(self, response:dict): pass
 
@@ -53,17 +57,17 @@ class Project:
     
     current_project:Self = None
     args = None
-    current:str = None
+    tag:str = None
 
     @classmethod
-    def setup(cls, clazz, args={}, current:str=""):
+    def setup(cls, clazz, args={}, tag:str=""):
         cls.args = args
         cls.clazz = clazz
-        cls.current = current
+        cls.tag = tag
 
     @classmethod
     def clear(cls):
-        cls.current = None
+        cls.tag = None
         cls.current_project = None
 
     @classmethod
@@ -75,16 +79,22 @@ class Project:
 
 class SortProject(Project):
     def __init__(self, directory, buttons=['z','x','c','v','b','n'], **kwargs):
-        super().__init__(directory=directory, match=".", sort_mode=True, **kwargs)
+        kwargs['match'] = kwargs.get('match',None) or "."
+        super().__init__(directory=directory, sort_mode=True, **kwargs)
         self.buttons = buttons
 
-    def introduction_impl(self) -> dict: return { 'mode':'sort', 'buttons':self.buttons }
+    def introduction_impl(self) -> dict: return { 'mode':'sort', 'buttons':self.buttons, 'labels':{k:ReversedSortingNames[k] for k in self.buttons} }
 
     def response_impl(self, response):
-        if (rating := response.get('rating', None)) in self.buttons:
-            self.ic.move_file(rating, verbose=True)
-        elif rating==' ':
+        if (p := response.get('rating', None)) in self.buttons:
+            self.ic.move_file(p, verbose=True)
+        elif p==' ':
             pass
+        elif p=='__info__':
+            return {'info':self.ic.get_text()}
+        elif p=='__undo__':
+            self.ic.undo_last()
+            return {'info':"undid last selection"}
         else:
             raise ProjectException(f"{response} not understood as a response")
         
@@ -100,6 +110,8 @@ class PickProject(Project):
             p = response.get('pick','')
             if p==' ':
                 pass
+            elif p=='__info__':
+                return {'info':self.ic.get_text()}
             else:
                 pick = int(response.get('pick',''))
                 self.ic.score(pick, and_print=True)
