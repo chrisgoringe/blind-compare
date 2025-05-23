@@ -1,0 +1,22 @@
+#buttons span,button{
+    margin: 2px;
+}
+
+#images {
+    display: flex;
+    max-height: 90%;
+    max-width: 90%;
+}
+
+img {
+    object-fit: scale-down;
+    max-width: 600px;
+    max-height: 700px;
+    padding: 2px;
+}
+
+.frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

@@ -3,8 +3,7 @@ import os, random
 from typing import Self
 from .utils import ProjectException
 
-SortingNames = { 'bin':'z', 'flux':'x', 'done':'c', 'out':'v', 'pony':'b', 'bad':'1', 'ok':'2', 'priority':'3', 'keep':'a', 'sdxl':'v' }
-SortingNames = SortingNames | { 'sfw':'h', 'nsfw':'j', 'sp':'k' }
+SortingNames = { 'bin':'z', 'flux':'x', 'done':'c', 'pony':'b', 'AAA':'a', 'sdxl':'v' }
 
 ReversedSortingNames = { SortingNames[k]:k for k in SortingNames }
 

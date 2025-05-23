@@ -32,13 +32,18 @@ def _move_file(basedir, subdir, filepath, verbose=False) -> list[tuple[str,str]]
         newpath = os.path.join(subdir, base + ext)
     shutil.move(filepath, newpath)
     moves = [(filepath, newpath), ]
-    if verbose: print(f"Moved {filepath} to {newpath}")
-    txtfilepath = os.path.splitext(filepath)[0]+".txt"
-    if os.path.exists(txtfilepath):
-        newtxtpath = os.path.splitext(newpath)[0]+".txt"
-        shutil.move(txtfilepath, newtxtpath)
-        moves.append((txtfilepath, newtxtpath))
-        if verbose: print(f"Moved {txtfilepath} to {newtxtpath}")
+    
+    def drag_along(extension):
+        epath = os.path.splitext(filepath)[0]+extension
+        if os.path.exists(epath):
+            newepath = os.path.splitext(newpath)[0]+extension
+            shutil.move(epath, newepath)
+            moves.append((epath, newepath))
+
+    drag_along(".txt")
+    drag_along(".idx.txt")
+
+    if verbose: print("\n".join(f"Moved {a} to {b}" for (a,b) in moves))
     return moves
 
 

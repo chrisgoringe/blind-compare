@@ -1,50 +1,28 @@
 from uvicorn import run
 from fastapi import FastAPI
-from server_modules.server_projects import Project, PickProject, SortProject, NoSuchProjectException, NoImagesException, NoMoreImagesException, SortingNames
+from server_modules.server_projects import Project, PickProject, SortProject, NoImagesException, NoMoreImagesException, SortingNames
 from server_modules.utils import serve_file, FileServeException
 import os
-from typing import Optional
+from utilities.directories import OUTPUT, POSTFACE, RC, FINAL
 
 app = FastAPI()
 
-root_dirs = [
-    r"C:\Users\chris\Documents\GitHub\ComfyUI\output",
-    r"A:\Images\candidates",
-    r"A:\Images\done",
-]
+BUTTONS = [SortingNames.get(x,x) for x in ['bin','flux','pony','sdxl','done']]
+_B = lambda k : BUTTONS + ([SortingNames.get('AAA'),] if k=='d' else [])
 
+DEFINITIONS = [ ("p", (POSTFACE, "unsorted")), ("d", RC),  ("c", (OUTPUT,"chroma")), ("cr", (OUTPUT,"chroma_rnd")), ("f", (OUTPUT,"fluxllm")), ] +\
+              [ (f"{i}", (OUTPUT,f"cyber{i}")) for i in range(10) ]
 
+DIRECTORIES = { k: d if isinstance(d,str) else os.path.join(*d) for k, d in DEFINITIONS }
+PROJECTS = { k :(SortProject, { "directory" : DIRECTORIES[k], "buttons":_B(k) }) for k in DIRECTORIES }
 
-b_pony = [SortingNames.get(x,x) for x in ['bin','pony','flux','sdxl','keep','done','out']]  
-b_flux = [SortingNames.get(x,x) for x in ['bin','flux','pony','sdxl','keep','done','out']]
-b_123  = [SortingNames.get(x,x) for x in ['bad','pony','flux', 'priority', 'done']]
-b_done = [SortingNames.get(x,x) for x in ['bin','done','pony', 'flux', 'sdxl',]]
-b_resort = [SortingNames.get(x,x) for x in ['bin','pony','flux','sdxl','done', ]]
+PROJECTS['aaa'] = (SortProject, { "directory" : os.path.join(FINAL,'AAA'), "buttons":[] })
 
-dir_nd = lambda n,d : os.path.join(root_dirs[n], d)
-dir_i = lambda i : dir_nd(0,"cyber"+i)
-
-PROJECTS = {}
-
-PROJECTS = PROJECTS | {
-    k :(SortProject, { "directory" : dir_nd(n,d), "buttons":b }) 
-            for k, n, d, b in [ ("c", 0, "compare", b_pony), 
-                                ("f", 0, "fluxllm", b_flux), 
-                                ("r", 1, "resort",  b_resort),
-                              ]
-}
-
-PROJECTS = PROJECTS | { i:(SortProject, { "directory" : dir_i(i), "buttons":b_pony }) for i in "1234567" }
-
-PROJECTS = PROJECTS | { "d":(SortProject, { "directory" : root_dirs[2], "buttons":b_done }) }
-
-def setup_project(n, m, u):
-    tag = f"{n}.{m}.{u}"
-    if Project.current_project!=tag: 
+def setup_project(n):
+    if Project.current_project!=n: 
         Project.clear()
-        if n in PROJECTS: Project.setup( PROJECTS[n][0], { **PROJECTS[n][1], "match":m }, tag )
-        else:             Project.setup( PickProject, { "directory":os.path.join(root_dirs[0],"compare"), "match":n, "move_chosen":m, "move_unchosen":u }, tag)
-
+        if n in PROJECTS: Project.setup( PROJECTS[n][0], { **PROJECTS[n][1] }, n )
+        
 def error_wrapping(function, *args, **kwargs):
     clear_on_error = kwargs.pop('clear_on_error', False)
     r = {}
@@ -60,17 +38,25 @@ def error_wrapping(function, *args, **kwargs):
     if r: print(r)
     return r
 
-def splash(n:str, m:Optional[str], u:Optional[str]):
-    setup_project(n, m, u)
+def splash(n:str):
+    setup_project(n)
     return serve_file("index.html")
 
 @app.get("/")
 def root():
     return {}
 
+@app.get("/list")
+def list():
+    def image_count(d):
+        if not os.path.exists(d): return 0
+        return len([f for f in os.listdir(d) if os.path.splitext(f)[1].lower() in [".jpg", ".jpeg", ".png"]])
+    l = { k:image_count(DIRECTORIES[k]) for k in DIRECTORIES }
+    return { k:l[k] for k in l if l[k]}
+
 @app.get("/splash")
-def true_root(n:str, m:Optional[str]=None, u:Optional[str]=None):
-    return error_wrapping(splash, n=n, m=m, u=u)
+def true_root(n:str):
+    return error_wrapping(splash, n=n)
 
 @app.get("/project")
 def project():

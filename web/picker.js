@@ -83,6 +83,10 @@ async function restart() {
     build()
 }
 
+async function loadlist() {
+    window.location = new URL("list",document.URL)
+}
+
 async function update_status() {
     project_status = await( api.get('status'))
     if (project_status.error) {
@@ -105,6 +109,11 @@ async function update_buttons(just_reset) {
     reset.addEventListener("click", (e)=>{
         e.stopPropagation()
         restart()
+    })
+    const list = createElement(buttons, "button", {type:'button', innerText:"list"})
+    list.addEventListener("click", (e)=>{
+        e.stopPropagation()
+        loadlist()
     })
     if (just_reset) return
     if (project_details.mode=='sort') {
