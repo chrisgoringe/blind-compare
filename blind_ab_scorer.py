@@ -52,7 +52,7 @@ class ImageChooser:
                  verbose:int=0, sort_mode:bool=False, recurse:bool=False, noshuffle:bool=False, allow_missing:bool=True, directory_exclude:str="zxc", **kwargs):
         self.directories = directory if isinstance(directory,list) else [directory,]
         self.verbose = verbose
-        self.last_moves:list[tuple[str,str]] = []
+        self.undo_stack:list[list[tuple[str,str]]]= []
 
         if sort_mode and match is None: 
             matches = lambda a : True
@@ -62,8 +62,8 @@ class ImageChooser:
             matches = lambda a : match in a
 
         candidate_imagepaths = []
-        def scan_directory(d): 
-            if os.path.split(d)[1] in directory_exclude:
+        def scan_directory(d, is_base=False): 
+            if os.path.split(d)[1] in directory_exclude and not is_base:
                 print(f"excluding {d}")
                 return
             try:
@@ -74,7 +74,7 @@ class ImageChooser:
                 print(f"Problem reading directory {d} - {e}")
 
         for directory in self.directories:
-            scan_directory(directory)
+            scan_directory(directory, True)
 
         if not candidate_imagepaths:
             raise MissingImageException("No matching images found")
@@ -121,16 +121,36 @@ class ImageChooser:
             return "No .txt file"
         
     def undo_last(self, verbose=True):
-        for (mv_from, mv_to) in self.last_moves:
-            shutil.move(mv_to, mv_from)
-            if verbose: print(f"moved {mv_to} back to {mv_from}")
-        if len(self.last_moves): self.pointer -= 2
-        self.last_moves = []
+        '''
+        Return the number that 'done' should change by.
+        '''
+        to_undo = self.undo_stack[-1] if len(self.undo_stack) else None
+        self.undo_stack = self.undo_stack[:-1]
+        if to_undo:
+            for (mv_from, mv_to) in to_undo:
+                shutil.move(mv_to, mv_from)
+                if verbose: print(f"moved {mv_to} back to {mv_from}")
+            self.pointer -= 2
+            return -1
+        self.pointer -= 1
+        return 0
+
+
+    def skip_this_dir(self):
+        '''
+        Skip over (do not resolve) all images in the current directory. Return the number that 'done' should change by.
+        '''
+        this_dir = os.path.dirname(self.base_imagepath)
+        skipped = 0
+        while self.pointer < self.batches-1 and os.path.dirname(self.base_imagepaths[self.pointer]) == this_dir: 
+            self.pointer += 1
+            skipped += 1
+        return skipped
         
     def move_file(self, subdir, verbose=False):
         assert(len(self.last_sent_images)==1)
         assert(len(self.directories)==1)
-        self.last_moves = _move_file(self.directories[0], subdir, self.last_sent_images[0], verbose)
+        self.undo_stack = _move_file(self.directories[0], subdir, self.last_sent_images[0], verbose)
         
 
     def guess_subs(self, one_match:str, match_term:str):
@@ -244,7 +264,6 @@ class TheApp:
             for i, im in enumerate(self.image_set):
                 self.image_labels[i].configure(image = customtkinter.CTkImage(light_image=im, size=(int(self.height*im.width/im.height),self.height)))
             if self.scorelist: self.scores = []
-            self.done += 1
         except MissingImageException as e:
             if self.verbose: print(f"Missing image: {e.args[0]}")
             self.pick_images()
@@ -252,10 +271,11 @@ class TheApp:
         self.last_picked_at = time.monotonic()
 
     def move_basefile(self, subdir):
-        self.ic.last_moves = _move_file(self.first_directory, subdir, self.ic.base_imagepath, self.verbose)
+        self.ic.undo_stack.append(_move_file(self.first_directory, subdir, self.ic.base_imagepath, self.verbose))
+        return 1
 
     def move_file(self, subdir, choice):
-        self.ic.last_moves = _move_file(self.first_directory, subdir, self.image_set[choice].filename, self.verbose)
+        self.ic.undo_stack.append(_move_file(self.first_directory, subdir, self.image_set[choice].filename, self.verbose))
 
     def keyup(self,k):
         if (time.monotonic() - self.last_picked_at)<0.1: return
@@ -263,12 +283,11 @@ class TheApp:
         if char=='q': self.app.quit()
         try:
             if self.sort_mode:
-                if char in 'zxcvbnm123456789':
-                    self.move_basefile(char)
-                elif k.char==' ': 
-                    pass
-                else:
-                    return
+                if char in 'zxcvbnm123456789':  self.done += self.move_basefile(char)
+                elif char==' ':                 self.done += 1
+                elif char=='u':                 self.done += self.ic.undo_last()
+                elif char=='i':                 self.done += self.ic.skip_this_dir()
+                else: return
             else:
                 if char==' ':
                     if self.scorelist: 
