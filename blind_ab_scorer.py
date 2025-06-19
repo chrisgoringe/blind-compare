@@ -150,7 +150,7 @@ class ImageChooser:
     def move_file(self, subdir, verbose=False):
         assert(len(self.last_sent_images)==1)
         assert(len(self.directories)==1)
-        self.undo_stack = _move_file(self.directories[0], subdir, self.last_sent_images[0], verbose)
+        self.undo_stack.append(_move_file(self.directories[0], subdir, self.last_sent_images[0], verbose))
         
 
     def guess_subs(self, one_match:str, match_term:str):
