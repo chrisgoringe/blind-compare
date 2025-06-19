@@ -1,14 +1,14 @@
 from uvicorn import run
 from fastapi import FastAPI
-from server_modules.server_projects import Project, PickProject, SortProject, NoImagesException, NoMoreImagesException, SortingNames
+from server_modules.server_projects import Project, PickProject, SortProject, NoImagesException, NoMoreImagesException, button_labels
 from server_modules.utils import serve_file, FileServeException
 import os
 from utilities.directories import OUTPUT, POSTFACE, RC, FINAL
 
 app = FastAPI()
 
-BUTTONS = [SortingNames.get(x,x) for x in ['bin','flux','pony','sdxl','done']]
-_B = lambda k : BUTTONS + ([SortingNames.get('AAA'),] if k=='d' else [])
+BUTTONS = button_labels(['bin','flux','pony','sdxl','done'])
+_B = lambda k : BUTTONS + (button_labels(['AAA',]) if k=='d' else [])
 
 DEFINITIONS = [ ("p", (POSTFACE, "unsorted")), ("d", RC),  ("c", (OUTPUT,"chroma")), ("cr", (OUTPUT,"chroma_rnd")), ("f", (OUTPUT,"fluxllm")), ] +\
               [ (f"{i}", (OUTPUT,f"cyber{i}")) for i in range(10) ]
@@ -17,6 +17,8 @@ DIRECTORIES = { k: d if isinstance(d,str) else os.path.join(*d) for k, d in DEFI
 PROJECTS = { k :(SortProject, { "directory" : DIRECTORIES[k], "buttons":_B(k) }) for k in DIRECTORIES }
 
 PROJECTS['aaa'] = (SortProject, { "directory" : os.path.join(FINAL,'AAA'), "buttons":[] })
+for sub in 'bxv':
+    PROJECTS[ f'p{sub}'] = (SortProject, { "directory" : os.path.join(POSTFACE,sub), "buttons":button_labels(['bin','keep','priority']) })
 
 def setup_project(n):
     if Project.current_project!=n: 
