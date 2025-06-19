@@ -72,7 +72,10 @@ async function respond(response, image_unchanged) {
         document.getElementById('image_wrap').innerHTML = ''
     }
     const reply = await( api.post("response", response) )
-    if (reply.info) document.getElementById('status_wrap').innerHTML = reply.info
+    if (reply.info) {
+        document.getElementById('status_wrap').innerHTML = reply.info
+        document.getElementById('status_wrap').showing = "info"
+    }
     if (image_unchanged) return
     load_images()
     update_status()
@@ -94,12 +97,22 @@ async function update_status() {
         return
     }
     document.getElementById('status_wrap').innerHTML = project_status.html
+    document.getElementById('status_wrap').showing = "status"
 }
 
 function keyPressed(e) {
     if ("zzxcvbnm".includes(e.key)) {
         respond({rating:e.key})
     }
+}
+
+function counting_button(b) {
+    b.basename = b.innerText
+    b.count = 0
+    b.addEventListener("click", (e)=>{
+        b.count += 1
+        b.innerText = `${b.basename} (${b.count})`
+    })  
 }
 
 async function update_buttons(just_reset) {
@@ -126,6 +139,7 @@ async function update_buttons(just_reset) {
                 e.stopPropagation()
                 respond({rating:letter})
             })
+            counting_button(button)
         })
     }
         
@@ -145,7 +159,18 @@ async function update_buttons(just_reset) {
     const more_info = createElement(buttons, "button", {type:'button', innerText:"info"}, "last")
     more_info.addEventListener("click", (e)=>{
         e.stopPropagation()
-        respond({rating:'__info__'}, true)
+        if (document.getElementById('status_wrap').showing == 'info') {
+            document.getElementById('status_wrap').showing = ''
+            document.getElementById('status_wrap').innerHTML = ''
+        } else {
+            respond({rating:'__info__'}, true)
+        }
+    })
+
+    const clear = createElement(buttons, "button", {type:'button', innerText:"clear"}, "last")
+    clear.addEventListener("click", (e)=>{
+        e.stopPropagation()
+        document.getElementById('image_wrap').innerHTML = ''
     })
 
 }
@@ -154,6 +179,7 @@ function report_error(error) {
     update_buttons(true)
     document.getElementById('image_wrap').innerHTML = ''
     document.getElementById('status_wrap').innerHTML = error
+    document.getElementById('status_wrap').showing = "error"
 }
 
 async function build() {
