@@ -1,5 +1,5 @@
 from fastapi.responses import Response
-import os
+import os, time
 
 class ProjectException(Exception): pass
 class FileServeException(ProjectException):
@@ -28,3 +28,16 @@ def serve_file(filepath, directory="web"):
     except Exception as e:
         raise FileServeException(filepath, f"{e}")
 
+class Timer:
+    def __init__(self, label, s_fmt=None, e_fmt=None):
+        self.label    = label
+        self.s_fmt = s_fmt or "--- starting  '{:>30}'    "
+        self.e_fmt = e_fmt or "--- completed '{:>30}' in {:>6.3}s"
+
+    def __enter__(self):
+        print(self.s_fmt.format(self.label)) 
+        self.start_time = time.monotonic()
+
+    def __exit__(self ,type, value, traceback):
+        duration = time.monotonic() - self.start_time
+        print (self.e_fmt.format(self.label, duration))

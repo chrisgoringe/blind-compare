@@ -1,11 +1,14 @@
 from blind_ab_scorer import ImageChooser, AllDone, MissingImageException
 import os, random
 from typing import Self
-from .utils import ProjectException
+from .utils import ProjectException, Timer
 
-SortingNames = { 'bin':'z', 'flux':'x', 'done':'c', 'pony':'b', 'AAA':'a', 'sdxl':'v' }
+SortingNames = { 'bin':'z', 'flux':'x', 'done':'c', 'pony':'b', 'AAA':'a', 'sdxl':'v', 'keep':'2', 'priority':'3' }
 
 ReversedSortingNames = { SortingNames[k]:k for k in SortingNames }
+
+def button_labels(names:list[str]) -> list[str]:
+    return [SortingNames.get(x, x) for x in names]
 
 class NoImagesException(ProjectException): pass
 class NoMoreImagesException(ProjectException): pass
@@ -14,7 +17,8 @@ class NoSuchProjectException(ProjectException): pass
 class Project:
     def __init__(self, directory, name=None, **kwargs):
         try:
-            self.ic:ImageChooser = ImageChooser(directory=directory, **kwargs)
+            with Timer("Create IC"):
+                self.ic:ImageChooser = ImageChooser(directory=directory, **kwargs)
             self.latest_images:list[str] = None
             self.directory = directory
             self.name = name or os.path.split(directory)[1]
