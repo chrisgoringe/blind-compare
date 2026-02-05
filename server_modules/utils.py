@@ -29,10 +29,11 @@ def serve_file(filepath, directory="web"):
         raise FileServeException(filepath, f"{e}")
 
 class Timer:
+    max_label_length = 10
     def __init__(self, label, s_fmt=None, e_fmt=None):
         self.label    = label
-        self.s_fmt = s_fmt or "--- starting  '{:>30}'    "
-        self.e_fmt = e_fmt or "--- completed '{:>30}' in {:>6.3}s"
+        self.s_fmt = s_fmt or "--- starting  '{:>"+str(self.max_label_length)+"}'    "
+        self.e_fmt = e_fmt or "--- completed '{:>"+str(self.max_label_length)+"}' in {:>6.3}s"
 
     def __enter__(self):
         print(self.s_fmt.format(self.label)) 

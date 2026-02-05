@@ -10,7 +10,7 @@ class AllDone(Exception): pass
 class ParameterException(Exception): pass
 
 IMAGE_EXT = [".jpg", ".jpeg", ".png"]
-
+ 
 DEFAULT_PER_ROW = [0,1,2,3,2,3,3,4,3,3,4,4,4]
 DEFAULT_PER_ROW_KP = [0,1,2,3,2,3,3,3,3,3]
 
@@ -54,12 +54,11 @@ class ImageChooser:
         self.verbose = verbose
         self.undo_stack:list[list[tuple[str,str]]]= []
 
-        if sort_mode and match is None: 
-            matches = lambda a : True
-        elif rmatch:  
-            matches = lambda a : re.match(rmatch, a)
-        else:         
-            matches = lambda a : match in a
+        if match is None and rmatch is None and sort_mode:
+            matcher = lambda a : True
+        else:
+            if match is None and rmatch is None: match = self.guess_match()
+            matcher = (lambda a : match in a) if match is not None else (lambda a : re.match(rmatch, a))         
 
         candidate_imagepaths = []
         def scan_directory(d, is_base=False): 
@@ -68,7 +67,7 @@ class ImageChooser:
                 return
             try:
                 for f in os.listdir(d):
-                    if matches(f) and is_image(os.path.join(d,f)):      candidate_imagepaths.append( os.path.join(d,f) )
+                    if matcher(f) and is_image(os.path.join(d,f)):      candidate_imagepaths.append( os.path.join(d,f) )
                     if recurse    and os.path.isdir(os.path.join(d,f)): scan_directory(os.path.join(d,f))
             except Exception as e:
                 print(f"Problem reading directory {d} - {e}")
@@ -152,6 +151,23 @@ class ImageChooser:
         assert(len(self.directories)==1)
         self.undo_stack.append(_move_file(self.directories[0], subdir, self.last_sent_images[0], verbose))
         
+    def guess_match(self):
+        try:
+            files = []
+            for directory in self.directories: files.extend(os.listdir(directory))
+            files.sort()
+            print(f"Comparing {files[0]} and {files[1]}")
+            start_match_to = 0
+            while files[0][start_match_to]==files[1][start_match_to]: start_match_to += 1
+            end_match_from = 0
+            while files[0][end_match_from]==files[1][end_match_from]: end_match_from -= 1
+            while len(m:=files[0][start_match_to:end_match_from+1])<5:
+                start_match_to -= 1
+                end_match_from += 1
+            print(f"Guessing match as {m}")
+            return m
+        except Exception as e:
+            raise Exception(f"Failed to guess matching pattern: {e}")
 
     def guess_subs(self, one_match:str, match_term:str):
         before, after = one_match.split(match_term)
@@ -162,7 +178,9 @@ class ImageChooser:
                 if p.startswith(before) and p.endswith(after):
                     mt = p[len(before):-len(after)]
                     if (mt!=match_term): subs += [mt,]
-        print(f"Guessing {subs}")
+        if len(subs)==1:
+            raise Exception(f"Failed to guess substitutions")
+        print(f"Guessing subs as {subs}")
         return subs
 
     def substituted(self, sub:str, as_path=False) -> Image.Image:
@@ -313,6 +331,7 @@ class TheApp:
                             self.ic.score(choice)
                             if self.move_chosen: self.move_file(self.move_chosen, choice)
                     else: return
+                self.done += 1
             self.pick_images()
         except AllDone:
             self.app.quit()
@@ -349,8 +368,6 @@ def parse_arguments(override):
     parser.add_argument('--allow_missing', action='store_true', help="include sets with missing images")
 
     args = parser.parse_args() if not override else parser.parse_args(override)
-    if not args.sort_mode and not args.match:
-        raise ArgumentException("Either --sort_mode (for sorting) or --match (for comparing) are required")
 
     for e in args.extensions:
         global IMAGE_EXT

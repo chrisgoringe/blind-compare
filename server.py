@@ -14,7 +14,7 @@ DEFINITIONS = [ ("p", (POSTFACE, "unsorted")), ("d", RC),  ("c", (OUTPUT,"chroma
               [ (f"{i}", (OUTPUT,f"cyber{i}")) for i in range(10) ]
 
 DIRECTORIES = { k: d if isinstance(d,str) else os.path.join(*d) for k, d in DEFINITIONS }
-PROJECTS = { k :(SortProject, { "directory" : DIRECTORIES[k], "buttons":_B(k) }) for k in DIRECTORIES }
+PROJECTS:dict[str,tuple[type,dict]] = { k :(SortProject, { "directory" : DIRECTORIES[k], "buttons":_B(k) }) for k in DIRECTORIES }
 
 PROJECTS['aaa'] = (SortProject, { "directory" : os.path.join(FINAL,'AAA'), "buttons":[] })
 for sub in 'bxv':
@@ -53,7 +53,7 @@ def list():
     def image_count(d):
         if not os.path.exists(d): return 0
         return len([f for f in os.listdir(d) if os.path.splitext(f)[1].lower() in [".jpg", ".jpeg", ".png"]])
-    l = { k:image_count(DIRECTORIES[k]) for k in DIRECTORIES }
+    l = { k:image_count(PROJECTS[k][1]['directory']) for k in PROJECTS }
     return { k:l[k] for k in l if l[k]}
 
 @app.get("/splash")
